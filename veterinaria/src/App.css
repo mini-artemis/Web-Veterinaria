@@ -1,0 +1,257 @@
+/* Estilos generales */
+.vet-container {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  color: #333;
+}
+
+/* Barra de navegación */
+.vet-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background-color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.vet-logo {
+  font-size: 24px;
+  font-weight: bold;
+  color: #1f2937;
+}
+
+.vet-logo span {
+  color: #0d9488;
+}
+
+.vet-links {
+  display: flex;
+  gap: 30px;
+}
+
+.vet-links a {
+  text-decoration: none;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.vet-links a:hover {
+  color: #0d9488;
+}
+
+/* Botones */
+.vet-btn-primary {
+  background-color: #0d9488;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vet-btn-primary:hover {
+  background-color: #0f766e;
+}
+
+/* Sección Hero (Carrusel y Difuminado) */
+.vet-hero {
+  position: relative;
+  background-size: cover;
+  background-position: center;
+  height: 500px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: white;
+  padding: 0 20px;
+  transition: background-image 1s ease-in-out;
+}
+
+.vet-hero-content {
+  position: relative;
+  z-index: 2;
+}
+
+.vet-hero-content h1 {
+  font-size: 48px;
+  margin-bottom: 15px;
+  font-weight: 900;
+}
+
+.vet-hero-content p {
+  font-size: 18px;
+  max-width: 600px;
+  margin: 0 auto 25px auto;
+}
+
+.vet-btn-light {
+  background-color: white;
+  color: #1f2937;
+  border: none;
+  padding: 12px 25px;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vet-btn-light:hover {
+  background-color: #f3f4f6;
+}
+
+/* Botones manuales del carrusel */
+.carousel-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  padding: 15px 20px;
+  cursor: pointer;
+  font-size: 20px;
+  z-index: 3;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.carousel-btn:hover {
+  background-color: rgba(0, 0, 0, 0.8);
+}
+
+.prev-btn {
+  left: 20px;
+}
+
+.next-btn {
+  right: 20px;
+}
+
+/* Efecto de difuminado inferior */
+.vet-hero-fade {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 120px;
+  background: linear-gradient(to bottom, rgba(249, 250, 251, 0) 0%, #f9fafb 100%);
+  z-index: 1;
+}
+
+/* Sección de Beneficios / Tarjetas */
+.vet-features {
+  padding: 60px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.vet-features h2 {
+  font-size: 30px;
+  margin-bottom: 40px;
+  color: #1f2937;
+}
+
+.vet-cards {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.vet-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+  width: 300px;
+  text-align: left;
+  border-top: 4px solid #0d9488;
+}
+
+.vet-card h3 {
+  margin-top: 0;
+  color: #1f2937;
+}
+
+.vet-card p {
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* Estilos del Footer (Información y Redes) */
+.vet-footer {
+  background-color: #1f2937;
+  color: #d1d5db;
+  padding: 50px 20px 20px 20px;
+  margin-top: 40px;
+}
+
+.vet-footer-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 40px;
+  padding-bottom: 30px;
+  border-bottom: 1px solid #374151;
+}
+
+.footer-col {
+  flex: 1;
+  min-width: 250px;
+}
+
+.footer-col h3 {
+  color: white;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.footer-col h3 span {
+  color: #0d9488;
+}
+
+.footer-col h4 {
+  color: white;
+  font-size: 18px;
+  margin-bottom: 15px;
+}
+
+.footer-col p {
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.social-links {
+  display: flex;
+  gap: 15px;
+}
+
+.social-links a {
+  color: #0d9488;
+  text-decoration: none;
+  font-weight: bold;
+  background-color: rgba(13, 148, 136, 0.1);
+  padding: 8px 15px;
+  border-radius: 20px;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.social-links a:hover {
+  background-color: #0d9488;
+  color: white;
+}
+
+.footer-bottom {
+  text-align: center;
+  padding-top: 20px;
+  font-size: 13px;
+  color: #9ca3af;
+}
