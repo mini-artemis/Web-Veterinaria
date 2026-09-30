@@ -1,0 +1,219 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import logoVeterinaria from '../assets/LogoVeterinaria.jpeg';
+import Veterinaria1 from '../assets/Veterinaria1.jpeg';
+import Veterinaria2 from '../assets/Veterinaria2.jpeg';
+
+// Servicios principales que se muestran en la página de inicio
+const servicios = [
+  { icono: '🩺', titulo: 'Consulta general', texto: 'Revisión completa, diagnóstico y tratamiento para perros, gatos y otras mascotas pequeñas.' },
+  { icono: '💉', titulo: 'Vacunación y desparasitación', texto: 'Esquemas completos para cachorros y adultos, con recordatorios de tus próximas dosis.' },
+  { icono: '🏥', titulo: 'Cirugía', texto: 'Esterilizaciones y cirugías generales en quirófano equipado, con monitoreo constante.' },
+  { icono: '🔬', titulo: 'Laboratorio', texto: 'Análisis de sangre, orina y coprológicos con resultados el mismo día.' },
+  { icono: '🛁', titulo: 'Estética y baño', texto: 'Baño, corte de pelo, corte de uñas y limpieza de oídos con productos especiales.' },
+  { icono: '🛏️', titulo: 'Hospitalización', texto: 'Cuidado las 24 horas para mascotas que necesitan observación o recuperación.' },
+];
+
+// Pasos para agendar una cita
+const pasosCita = [
+  { titulo: 'Contáctanos', texto: 'Llámanos, escríbenos por WhatsApp o usa el botón "Agendar Cita".' },
+  { titulo: 'Elige tu horario', texto: 'Te ofrecemos el día y la hora que mejor te acomoden.' },
+  { titulo: 'Visítanos', texto: 'Llega unos minutos antes con la cartilla de vacunación de tu mascota.' },
+];
+
+// Opiniones de clientes
+const testimonios = [
+  { texto: 'Atendieron a mi perrita en una urgencia a medianoche y la trataron con muchísimo cariño. ¡Muy recomendados!', nombre: 'Mariana G.', mascota: 'Luna, Golden Retriever' },
+  { texto: 'Mi gato odia salir de casa, pero aquí siempre lo tratan con paciencia. El doctor explica todo muy claro.', nombre: 'Carlos R.', mascota: 'Michi, gato doméstico' },
+  { texto: 'Los precios son justos y me mandan recordatorios de las vacunas. Ya no se me olvida ninguna.', nombre: 'Sofía L.', mascota: 'Rocky, Schnauzer' },
+];
+
+// Horario de atención
+const horarios = [
+  { dia: 'Lunes a viernes', hora: '9:00 – 20:00' },
+  { dia: 'Sábado', hora: '9:00 – 15:00' },
+  { dia: 'Domingo', hora: '10:00 – 14:00' },
+  { dia: 'Urgencias', hora: '24 horas, todos los días' },
+];
+
+// Lista de imágenes para el carrusel de la veterinaria
+const heroImages = [
+  { src: logoVeterinaria, alt: 'Logo de la clinica' },
+  { src: Veterinaria1, alt: 'Imagen de la veterinaria 1' },
+  { src: Veterinaria2, alt: 'Imagen de la veterinaria 2' },
+];
+---
+
+<Layout
+  title="Puppy and Kitty | Clínica veterinaria"
+  description="Clínica veterinaria Puppy and Kitty: consultas, vacunación, cirugía, laboratorio, estética y urgencias 24/7 para perros y gatos."
+>
+  <!-- Enlaces antiguos (#/nosotros) se mandan a la nueva dirección -->
+  <script is:inline slot="head">
+    if (location.hash === '#/nosotros') location.replace('/nosotros');
+  </script>
+
+  <!-- SECCIÓN PRINCIPAL (HERO CON CARRUSEL MANUAL/AUTOMÁTICO Y DIFUMINADO) -->
+  <header class="vet-hero">
+    {/* Solo la primera imagen se descarga con prioridad; las demás después */}
+    {heroImages.map((image, i) => (
+      <Image
+        class:list={['vet-hero-slide', { active: i === 0 }]}
+        src={image.src}
+        alt={image.alt}
+        widths={[640, 960, 1280, 1920]}
+        sizes="100vw"
+        format="webp"
+        quality={70}
+        loading={i === 0 ? 'eager' : 'lazy'}
+        fetchpriority={i === 0 ? 'high' : 'low'}
+      />
+    ))}
+    <div class="vet-hero-overlay"></div>
+
+    <!-- Botones de navegación manual del carrusel -->
+    <button class="carousel-btn prev-btn" aria-label="Imagen anterior">&#10094;</button>
+    <button class="carousel-btn next-btn" aria-label="Imagen siguiente">&#10095;</button>
+
+    <div class="vet-hero-content">
+      <h1>CUIDAMOS A TU MASCOTA</h1>
+      <p>Atención veterinaria de primer nivel, instalaciones modernas y profesionales apasionados listos para ayudarte en todo momento.</p>
+      <button class="vet-btn-light">Agendar Consulta</button>
+    </div>
+    <!-- Capa de difuminado inferior -->
+    <div class="vet-hero-fade"></div>
+  </header>
+
+  <!-- SECCIÓN DE BENEFICIOS -->
+  <section class="vet-features">
+    <h2>Por qué elegirnos</h2>
+    <div class="vet-cards">
+      <div class="vet-card">
+        <h3>Expertos Calificados</h3>
+        <p>Médicos veterinarios especializados en distintas áreas para el cuidado ideal de tu animal de compañía.</p>
+      </div>
+      <div class="vet-card">
+        <h3>Historial Digital</h3>
+        <p>Lleva el control de vacunas, recetas y próximas citas de forma organizada.</p>
+      </div>
+      <div class="vet-card">
+        <h3>Urgencias 24/7</h3>
+        <p>Estamos disponibles a cualquier hora para atender cualquier emergencia imprevista.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- SERVICIOS PRINCIPALES -->
+  <section class="vet-section vet-section-alt">
+    <div class="vet-section-inner">
+      <div class="vet-section-head">
+        <h2>Nuestros servicios</h2>
+        <p>Todo lo que tu mascota necesita para estar sana y feliz, en un solo lugar.</p>
+      </div>
+      <div class="vet-grid">
+        {servicios.map((servicio) => (
+          <div class="vet-service">
+            <span class="vet-service-icon" aria-hidden="true">{servicio.icono}</span>
+            <h3>{servicio.titulo}</h3>
+            <p>{servicio.texto}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- CÓMO AGENDAR UNA CITA -->
+  <section class="vet-section">
+    <div class="vet-section-inner">
+      <div class="vet-section-head">
+        <h2>Agenda tu cita en 3 pasos</h2>
+        <p>Sin complicaciones y sin largas esperas.</p>
+      </div>
+      <ol class="vet-steps">
+        {pasosCita.map((paso, i) => (
+          <li>
+            <span class="vet-step-num">{i + 1}</span>
+            <h3>{paso.titulo}</h3>
+            <p>{paso.texto}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- TESTIMONIOS -->
+  <section class="vet-section vet-section-alt">
+    <div class="vet-section-inner">
+      <div class="vet-section-head">
+        <h2>Lo que dicen nuestros clientes</h2>
+        <p>La confianza de las familias es nuestra mejor carta de presentación.</p>
+      </div>
+      <div class="vet-grid">
+        {testimonios.map((testimonio) => (
+          <figure class="vet-testimonial">
+            <span class="vet-stars" aria-label="5 de 5 estrellas">★★★★★</span>
+            <blockquote>“{testimonio.texto}”</blockquote>
+            <figcaption>
+              <strong>{testimonio.nombre}</strong>
+              <span>{testimonio.mascota}</span>
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- HORARIOS Y UBICACIÓN -->
+  <section class="vet-section">
+    <div class="vet-section-inner vet-info">
+      <div class="vet-info-card">
+        <h2>Horario de atención</h2>
+        <dl class="vet-hours">
+          {horarios.map((horario) => (
+            <div>
+              <dt>{horario.dia}</dt>
+              <dd>{horario.hora}</dd>
+            </div>
+          ))}
+        </dl>
+      </div>
+      <div class="vet-info-card">
+        <h2>Visítanos</h2>
+        <p>📍 Av. de las Mascotas #123, Col. Del Parque</p>
+        <p>📞 +52 (55) 1234-5678</p>
+        <p>✉️ contacto@puppyandkitty.com</p>
+        <p class="vet-info-note">Contamos con estacionamiento gratuito y sala de espera separada para perros y gatos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- LLAMADO A LA ACCIÓN -->
+  <section class="vet-cta">
+    <h2>¿Tu mascota necesita atención?</h2>
+    <p>Agenda hoy mismo y recibe una revisión general con el cariño que merece.</p>
+    <button class="vet-btn-light">Agendar Consulta</button>
+  </section>
+</Layout>
+
+<script>
+  // Carrusel: cambio automático cada 4 segundos y botones manuales
+  const slides = document.querySelectorAll('.vet-hero-slide');
+  let current = 0;
+
+  const show = (index: number) => {
+    slides[current].classList.remove('active');
+    current = (index + slides.length) % slides.length;
+    slides[current].classList.add('active');
+  };
+
+  let timer = setInterval(() => show(current + 1), 4000);
+  const move = (step: number) => {
+    show(current + step);
+    clearInterval(timer);
+    timer = setInterval(() => show(current + 1), 4000);
+  };
+
+  document.querySelector('.prev-btn')!.addEventListener('click', () => move(-1));
+  document.querySelector('.next-btn')!.addEventListener('click', () => move(1));
+</script>
