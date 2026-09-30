@@ -1,36 +1,58 @@
+/*
+  Unidades usadas:
+  - rem: relativo al tamaño de letra del navegador (1rem = 16px por defecto).
+         Si el usuario hace zoom o agranda la letra, todo crece en proporción.
+  - em en media queries: los cortes también se ajustan con el zoom.
+  - clamp(mín, ideal, máx): tamaños fluidos que se adaptan al ancho de pantalla.
+*/
+
 /* Estilos generales */
 .vet-container {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #f9fafb;
   min-height: 100vh;
-  margin: 0;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
   color: #333;
+  line-height: 1.5;
+  overflow-x: clip; /* clip (no hidden) para que funcione position: sticky */
 }
 
 /* Barra de navegación */
 .vet-nav {
+  position: relative;
+  z-index: 10;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 40px;
+  gap: 1rem;
+  padding: 1.25rem clamp(1rem, 4vw, 2.5rem);
   background-color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.05);
 }
 
 .vet-logo {
-  font-size: 24px;
+  text-decoration: none;
+  font-size: 1.5rem;
   font-weight: bold;
   color: #1f2937;
+  white-space: nowrap;
 }
 
 .vet-logo span {
   color: #0d9488;
 }
 
+.vet-nav-menu {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.5vw, 1.875rem);
+}
+
 .vet-links {
   display: flex;
-  gap: 30px;
+  flex-wrap: wrap;
+  gap: clamp(1rem, 2.5vw, 1.875rem);
 }
 
 .vet-links a {
@@ -39,8 +61,26 @@
   font-weight: 500;
 }
 
-.vet-links a:hover {
+.vet-links a:hover,
+.vet-links a.active {
   color: #0d9488;
+}
+
+/* Botón hamburguesa (oculto en escritorio) */
+.vet-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 1.625rem;
+  line-height: 1;
+  color: #1f2937;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+}
+
+/* Fondo difuminado del menú (oculto en escritorio) */
+.vet-menu-backdrop {
+  display: none;
 }
 
 /* Botones */
@@ -48,14 +88,31 @@
   background-color: #0d9488;
   color: white;
   border: none;
-  padding: 10px 20px;
-  border-radius: 20px;
+  padding: 0.625em 1.25em;
+  border-radius: 999px;
+  font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
+  white-space: nowrap;
 }
 
 .vet-btn-primary:hover {
   background-color: #0f766e;
+}
+
+.vet-btn-light {
+  background-color: white;
+  color: #1f2937;
+  border: none;
+  padding: 0.75em 1.5em;
+  border-radius: 999px;
+  font-size: 1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.vet-btn-light:hover {
+  background-color: #f3f4f6;
 }
 
 /* Sección Hero (Carrusel y Difuminado) */
@@ -63,45 +120,33 @@
   position: relative;
   background-size: cover;
   background-position: center;
-  height: 500px;
+  min-height: clamp(22rem, 70vh, 34rem);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   color: white;
-  padding: 0 20px;
+  padding: 3rem clamp(3.5rem, 8vw, 6rem);
   transition: background-image 1s ease-in-out;
 }
 
 .vet-hero-content {
   position: relative;
   z-index: 2;
+  max-width: 40rem;
 }
 
 .vet-hero-content h1 {
-  font-size: 48px;
-  margin-bottom: 15px;
+  color: white;
+  font-size: clamp(1.75rem, 5vw + 0.5rem, 3rem);
+  line-height: 1.15;
+  margin: 0 0 1rem;
   font-weight: 900;
 }
 
 .vet-hero-content p {
-  font-size: 18px;
-  max-width: 600px;
-  margin: 0 auto 25px auto;
-}
-
-.vet-btn-light {
-  background-color: white;
-  color: #1f2937;
-  border: none;
-  padding: 12px 25px;
-  border-radius: 20px;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.vet-btn-light:hover {
-  background-color: #f3f4f6;
+  font-size: clamp(0.95rem, 1.5vw + 0.5rem, 1.125rem);
+  margin: 0 auto 1.5rem;
 }
 
 /* Botones manuales del carrusel */
@@ -112,11 +157,11 @@
   background-color: rgba(0, 0, 0, 0.5);
   color: white;
   border: none;
-  padding: 15px 20px;
+  padding: 0.75em 1em;
   cursor: pointer;
-  font-size: 20px;
+  font-size: clamp(1rem, 2vw, 1.25rem);
   z-index: 3;
-  border-radius: 4px;
+  border-radius: 0.25rem;
   transition: background-color 0.3s;
 }
 
@@ -125,11 +170,11 @@
 }
 
 .prev-btn {
-  left: 20px;
+  left: clamp(0.5rem, 2vw, 1.25rem);
 }
 
 .next-btn {
-  right: 20px;
+  right: clamp(0.5rem, 2vw, 1.25rem);
 }
 
 /* Efecto de difuminado inferior */
@@ -138,40 +183,40 @@
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 120px;
+  height: 7.5rem;
   background: linear-gradient(to bottom, rgba(249, 250, 251, 0) 0%, #f9fafb 100%);
   z-index: 1;
 }
 
 /* Sección de Beneficios / Tarjetas */
 .vet-features {
-  padding: 60px 20px;
-  max-width: 1200px;
+  width: 100%;
+  padding: clamp(2.5rem, 6vw, 3.75rem) 1rem;
+  max-width: 75rem;
   margin: 0 auto;
   text-align: center;
 }
 
 .vet-features h2 {
-  font-size: 30px;
-  margin-bottom: 40px;
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 1.875rem);
+  margin: 0 0 clamp(1.5rem, 4vw, 2.5rem);
   color: #1f2937;
 }
 
+/* Las tarjetas se acomodan solas: 3, 2 o 1 por fila según el espacio */
 .vet-cards {
-  display: flex;
-  gap: 20px;
-  justify-content: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: 1.25rem;
 }
 
 .vet-card {
   background: white;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-  width: 300px;
+  padding: clamp(1.25rem, 3vw, 1.875rem);
+  border-radius: 0.75rem;
+  box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
   text-align: left;
-  border-top: 4px solid #0d9488;
+  border-top: 0.25rem solid #0d9488;
 }
 
 .vet-card h3 {
@@ -181,37 +226,542 @@
 
 .vet-card p {
   color: #6b7280;
-  font-size: 14px;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Contenido de cada página */
+.vet-main {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Encabezado de páginas internas (ej. Nosotros) */
+.vet-page-banner {
+  background-size: cover;
+  background-position: center;
+  color: white;
+  text-align: center;
+  padding: clamp(3.5rem, 10vw, 6rem) 1rem;
+}
+
+.vet-page-banner h1 {
+  font-size: clamp(1.75rem, 5vw + 0.5rem, 3rem);
+  font-weight: 900;
+  line-height: 1.15;
+  margin: 0 0 0.75rem;
+}
+
+.vet-page-banner p {
+  font-size: clamp(0.95rem, 1.5vw + 0.5rem, 1.125rem);
+  margin: 0;
+}
+
+/* Scrollytelling de la historia */
+.vet-story {
+  position: relative;
+}
+
+/* Fondo que se queda fijo mientras pasan los textos */
+.vet-story-visual {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  height: 100svh;
+  overflow: hidden;
+}
+
+.vet-story-bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transform: scale(1.08);
+  transition: opacity 0.8s ease, transform 1.2s ease;
+}
+
+.vet-story-bg.active {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.vet-story-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.6));
+}
+
+/* Indicador de progreso (puntos a la derecha) */
+.vet-story-dots {
+  position: absolute;
+  right: clamp(0.75rem, 3vw, 2rem);
+  top: 50%;
+  transform: translateY(-50%);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
+.vet-story-dots li {
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 999px;
+  background-color: rgba(255, 255, 255, 0.5);
+  transition: height 0.3s ease, background-color 0.3s ease;
+}
+
+.vet-story-dots li.active {
+  height: 1.75rem;
+  background-color: white;
+}
+
+/* Los textos suben por encima del fondo fijo */
+.vet-story-steps {
+  position: relative;
+  margin-top: -100vh;
+  margin-top: -100svh;
+}
+
+.vet-story-step {
+  min-height: 100vh;
+  min-height: 100svh;
+  display: flex;
+  align-items: center;
+  padding: 2rem clamp(2.5rem, 6vw, 5rem);
+}
+
+/* Alterna las tarjetas: izquierda, derecha, izquierda */
+.vet-story-step:nth-child(even) {
+  justify-content: flex-end;
+}
+
+.vet-story-card {
+  max-width: 30rem;
+  background-color: rgba(255, 255, 255, 0.94);
+  border-top: 0.25rem solid #0d9488;
+  border-radius: 0.75rem;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.25);
+  opacity: 0.2;
+  transform: translateY(2rem);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+
+.vet-story-step.active .vet-story-card {
+  opacity: 1;
+  transform: none;
+}
+
+.vet-story-num {
+  color: #0d9488;
+  font-weight: 900;
+  font-size: 0.875rem;
+  letter-spacing: 0.1em;
+}
+
+.vet-story-card h2 {
+  font-size: clamp(1.75rem, 4vw + 0.5rem, 2.5rem);
+  color: #1f2937;
+  margin: 0.25rem 0 0.75rem;
+}
+
+.vet-story-card p {
+  font-size: clamp(1rem, 1vw + 0.75rem, 1.125rem);
+  color: #4b5563;
+  margin: 0;
+}
+
+/* Datos de la historia (años, mascotas, urgencias) */
+.vet-about-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.vet-about-stats > div {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background-color: rgba(13, 148, 136, 0.08);
+  text-align: center;
+}
+
+.vet-stat-number {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #0d9488;
+}
+
+.vet-stat-label {
+  font-size: 0.8125rem;
+  color: #6b7280;
+}
+
+/* Si la persona prefiere menos movimiento, se quitan las animaciones */
+@media (prefers-reduced-motion: reduce) {
+  .vet-story-bg,
+  .vet-story-card {
+    transition: none;
+    transform: none;
+  }
+}
+
+/* ===== Secciones generales (Inicio y Nosotros) ===== */
+.vet-section {
+  width: 100%;
+  padding: clamp(2.5rem, 6vw, 4rem) 1rem;
+}
+
+/* Secciones alternadas con fondo blanco */
+.vet-section-alt {
+  background-color: white;
+}
+
+.vet-section-inner {
+  max-width: 75rem;
+  margin: 0 auto;
+}
+
+.vet-section-head {
+  max-width: 40rem;
+  margin: 0 auto clamp(1.5rem, 4vw, 2.5rem);
+  text-align: center;
+}
+
+.vet-section h2 {
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 1.875rem);
+  color: #1f2937;
+  margin: 0 0 0.75rem;
+}
+
+.vet-section-head p {
+  color: #6b7280;
+  margin: 0;
+}
+
+.vet-features-intro {
+  max-width: 40rem;
+  margin: -1rem auto clamp(1.5rem, 4vw, 2.5rem);
+  color: #6b7280;
+}
+
+/* Cuadrícula que acomoda 3, 2 o 1 tarjetas por fila */
+.vet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1.25rem;
+}
+
+/* Tarjetas de servicios */
+.vet-service {
+  padding: 1.5rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.vet-service:hover {
+  transform: translateY(-0.25rem);
+  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
+}
+
+.vet-service-icon {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: rgba(13, 148, 136, 0.1);
+}
+
+.vet-service h3,
+.vet-team-card h3,
+.vet-steps h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.vet-service p,
+.vet-team-card p,
+.vet-steps p {
+  margin: 0;
+  font-size: 0.9375rem;
+  color: #6b7280;
+}
+
+/* Pasos para agendar cita */
+.vet-steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1.25rem;
+}
+
+.vet-steps li {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.vet-step-num {
+  display: grid;
+  place-items: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background-color: #0d9488;
+  color: white;
+  font-size: 1.25rem;
+  font-weight: 900;
+}
+
+/* Testimonios */
+.vet-testimonial {
+  margin: 0;
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  border-left: 0.25rem solid #0d9488;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.vet-stars {
+  color: #f59e0b;
+  letter-spacing: 0.1em;
+}
+
+.vet-testimonial blockquote {
+  margin: 0;
+  color: #374151;
+  font-style: italic;
+  flex-grow: 1;
+}
+
+.vet-testimonial figcaption {
+  display: flex;
+  flex-direction: column;
+  font-size: 0.875rem;
+  color: #6b7280;
+}
+
+.vet-testimonial figcaption strong {
+  color: #1f2937;
+}
+
+/* Horarios y ubicación */
+.vet-info {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1.25rem;
+}
+
+.vet-info-card {
+  padding: clamp(1.5rem, 4vw, 2rem);
+  border-radius: 0.75rem;
+  background-color: white;
+  box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
+}
+
+.vet-info-card p {
+  margin: 0.5rem 0;
+  color: #4b5563;
+}
+
+.vet-info-note {
+  margin-top: 1rem !important;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background-color: rgba(13, 148, 136, 0.08);
+  font-size: 0.875rem;
+}
+
+.vet-hours {
+  margin: 0;
+}
+
+.vet-hours div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.vet-hours div:last-child {
+  border-bottom: none;
+  color: #0d9488;
+  font-weight: bold;
+}
+
+.vet-hours dt {
+  font-weight: 600;
+}
+
+.vet-hours dd {
+  margin: 0;
+  text-align: right;
+}
+
+/* Llamado a la acción */
+.vet-cta {
+  padding: clamp(2.5rem, 6vw, 4rem) 1rem;
+  text-align: center;
+  color: white;
+  background: linear-gradient(135deg, #0d9488, #0f766e);
+}
+
+.vet-cta h2 {
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 2.25rem);
+  margin: 0 0 0.75rem;
+}
+
+.vet-cta p {
+  max-width: 36rem;
+  margin: 0 auto 1.5rem;
+  opacity: 0.9;
+}
+
+/* Tarjetas del equipo */
+.vet-team-card {
+  padding: 1.5rem;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+}
+
+.vet-avatar {
+  display: grid;
+  place-items: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin: 0 auto 1rem;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  color: white;
+  font-size: 1.375rem;
+  font-weight: 900;
+}
+
+.vet-team-role {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #0d9488;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+/* Imagen + texto lado a lado (instalaciones) */
+.vet-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+}
+
+.vet-split-img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 0.75rem;
+  box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+.vet-split p {
+  color: #4b5563;
+}
+
+.vet-checklist {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.625rem;
+}
+
+.vet-checklist li {
+  position: relative;
+  padding-left: 1.75rem;
+  color: #374151;
+}
+
+.vet-checklist li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #0d9488;
+  font-weight: 900;
+}
+
+/* Preguntas frecuentes */
+.vet-faq {
+  max-width: 48rem;
+}
+
+.vet-faq details {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  background-color: #f9fafb;
+  margin-bottom: 0.75rem;
+}
+
+.vet-faq summary {
+  cursor: pointer;
+  padding: 1rem 1.25rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.vet-faq summary::marker {
+  color: #0d9488;
+}
+
+.vet-faq details p {
+  margin: 0;
+  padding: 0 1.25rem 1rem;
+  color: #4b5563;
 }
 
 /* Estilos del Footer (Información y Redes) */
 .vet-footer {
   background-color: #1f2937;
   color: #d1d5db;
-  padding: 50px 20px 20px 20px;
-  margin-top: 40px;
+  padding: clamp(2.5rem, 5vw, 3.125rem) 1rem 1.25rem;
+  margin-top: auto; /* empuja el footer al fondo en pantallas altas */
 }
 
+/* Columnas que se acomodan solas según el espacio disponible */
 .vet-footer-content {
-  max-width: 1200px;
+  max-width: 75rem;
   margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 40px;
-  padding-bottom: 30px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: clamp(1.5rem, 4vw, 2.5rem);
+  padding-bottom: 1.875rem;
   border-bottom: 1px solid #374151;
 }
 
 .footer-col {
-  flex: 1;
-  min-width: 250px;
+  min-width: 0;
 }
 
 .footer-col h3 {
   color: white;
-  font-size: 22px;
-  margin-bottom: 10px;
+  font-size: 1.375rem;
+  margin: 0 0 0.625rem;
 }
 
 .footer-col h3 span {
@@ -220,18 +770,21 @@
 
 .footer-col h4 {
   color: white;
-  font-size: 18px;
-  margin-bottom: 15px;
+  font-size: 1.125rem;
+  margin: 0 0 0.9rem;
 }
 
 .footer-col p {
-  font-size: 14px;
-  margin: 8px 0;
+  font-size: 0.875rem;
+  margin: 0.5rem 0;
+  overflow-wrap: anywhere;
 }
 
+/* Los botones de redes bajan de línea si no caben */
 .social-links {
   display: flex;
-  gap: 15px;
+  flex-wrap: wrap;
+  gap: 0.625rem;
 }
 
 .social-links a {
@@ -239,8 +792,9 @@
   text-decoration: none;
   font-weight: bold;
   background-color: rgba(13, 148, 136, 0.1);
-  padding: 8px 15px;
-  border-radius: 20px;
+  padding: 0.5em 1em;
+  border-radius: 999px;
+  white-space: nowrap;
   transition: background-color 0.3s, color 0.3s;
 }
 
@@ -251,7 +805,82 @@
 
 .footer-bottom {
   text-align: center;
-  padding-top: 20px;
-  font-size: 13px;
+  padding-top: 1.25rem;
+  font-size: 0.8125rem;
   color: #9ca3af;
+}
+
+.footer-bottom p {
+  margin: 0;
+}
+
+/* ===== RESPONSIVE =====
+   Los cortes están en em para que también se activen al hacer zoom.
+   48em = 768px con el tamaño de letra normal. */
+@media (max-width: 48em) {
+  /* Menú (tres rayas) a la izquierda y logo a la derecha */
+  .vet-menu-btn {
+    display: block;
+    order: -1;
+    position: relative;
+    z-index: 3; /* queda encima del difuminado para poder cerrar con la ✕ */
+  }
+
+  /* Fondo difuminado detrás del menú; al tocarlo se cierra */
+  .vet-menu-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1;
+    background-color: rgba(0, 0, 0, 0.25);
+    -webkit-backdrop-filter: blur(0.375rem);
+    backdrop-filter: blur(0.375rem);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s;
+  }
+
+  .vet-menu-backdrop.open {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  /* El menú entra deslizándose desde la izquierda */
+  .vet-nav-menu {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 2;
+    width: min(80%, 20rem);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background-color: white;
+    padding: 5rem 1.5rem 1.5rem;
+    box-shadow: 0.375rem 0 1rem rgba(0, 0, 0, 0.15);
+    overflow-y: auto;
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition: transform 0.3s ease, visibility 0.3s;
+  }
+
+  .vet-nav-menu.open {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .vet-links {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .vet-links a {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .vet-nav-menu .vet-btn-primary {
+    margin-top: 1rem;
+  }
 }
