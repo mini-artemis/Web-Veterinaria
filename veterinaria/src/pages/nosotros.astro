@@ -1,0 +1,218 @@
+---
+import { Image } from 'astro:assets';
+import Layout from '../layouts/Layout.astro';
+import logoVeterinaria from '../assets/LogoVeterinaria.jpeg';
+import Veterinaria1 from '../assets/Veterinaria1.jpeg';
+import Veterinaria2 from '../assets/Veterinaria2.jpeg';
+
+// Capítulos de la historia (scrollytelling): cada uno ocupa una pantalla completa
+const capitulos = [
+  {
+    etiqueta: '2016',
+    titulo: 'Así empezamos',
+    texto: 'En Puppy and Kitty creemos que las mascotas son parte de la familia. Abrimos nuestras puertas en 2016 con un pequeño consultorio y muchas ganas de cuidar a los perros y gatos de nuestra comunidad.',
+    img: Veterinaria1,
+  },
+  {
+    etiqueta: 'Nuestro equipo',
+    titulo: 'Crecimos contigo',
+    texto: 'Nuestro equipo de médicos veterinarios combina experiencia, tecnología moderna y, sobre todo, mucho cariño para que tu mascota se sienta en casa desde que cruza la puerta.',
+    img: Veterinaria2,
+  },
+  {
+    etiqueta: 'Hoy',
+    titulo: 'Seguimos cuidando de ellos',
+    texto: 'Acompañamos a las mascotas en cada etapa de su vida, desde su primera vacuna hasta sus años dorados.',
+    img: logoVeterinaria,
+    stats: [
+      { numero: '10+', texto: 'Años de experiencia' },
+      { numero: '5,000+', texto: 'Mascotas atendidas' },
+      { numero: '24/7', texto: 'Atención de urgencias' },
+    ],
+  },
+];
+
+// Equipo de la clínica
+const equipo = [
+  { iniciales: 'MV', nombre: 'Dra. Ma.Fernanda Velazquéz', puesto: 'Directora médica', texto: 'Medicina interna de perros y gatos. Fundó la clínica en 2016.' },
+  { iniciales: 'GV', nombre: 'Dr. Giovanni Vargas', puesto: 'Cirujano', texto: 'Especialista en cirugía general y ortopedia de pequeñas especies.' },
+  { iniciales: 'AG', nombre: 'Dr. Ángel Garcia', puesto: 'Medicina felina', texto: 'Experto en el cuidado de gatos y en consultas libres de estrés.' },
+  { iniciales: 'JT', nombre: 'Jorge Torres', puesto: 'Estilista canino', texto: 'Se encarga de que cada mascota salga limpia, bonita y tranquila.' },
+];
+
+// Lo que hay dentro de la clínica
+const instalaciones = [
+  'Quirófano equipado con monitoreo de signos vitales',
+  'Laboratorio propio con resultados el mismo día',
+  'Área de hospitalización con vigilancia las 24 horas',
+  'Salas de espera separadas para perros y gatos',
+  'Rayos X y ultrasonido',
+  'Área de estética y baño',
+];
+
+// Preguntas frecuentes
+const preguntas = [
+  { pregunta: '¿Qué animales atienden?', respuesta: 'Principalmente perros y gatos, y también conejos, hurones y otras mascotas pequeñas.' },
+  { pregunta: '¿Necesito cita para una consulta?', respuesta: 'Recomendamos agendar para evitar esperas, pero también recibimos pacientes sin cita según disponibilidad. Las urgencias se atienden de inmediato.' },
+  { pregunta: '¿Qué formas de pago aceptan?', respuesta: 'Efectivo, tarjetas de débito y crédito, y transferencia bancaria.' },
+  { pregunta: '¿Qué debo llevar a la primera consulta?', respuesta: 'La cartilla de vacunación (si la tienes), el nombre de los medicamentos que toma tu mascota y, para gatos, una transportadora.' },
+];
+
+// Tamaños generados para las imágenes que ocupan todo el ancho
+const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'webp', quality: 70 } as const;
+---
+
+<Layout
+  title="Nosotros | Puppy and Kitty"
+  description="Conoce la historia, el equipo y las instalaciones de la clínica veterinaria Puppy and Kitty."
+>
+  <!-- ENCABEZADO DE LA PÁGINA -->
+  <header class="vet-page-banner">
+    <Image class="vet-page-banner-img" src={Veterinaria2} alt="" {...fullWidth} loading="eager" fetchpriority="high" />
+    <h1>Sobre Nosotros</h1>
+    <p>Conoce a la familia que cuida de la tuya.</p>
+  </header>
+
+  <!-- MISIÓN, VISIÓN Y VALORES -->
+  <section class="vet-features">
+    <h2>Lo que nos mueve</h2>
+    <p class="vet-features-intro">
+      Somos una clínica veterinaria familiar dedicada al bienestar de perros, gatos y otras mascotas pequeñas.
+      Todo lo que hacemos parte de estas tres ideas.
+    </p>
+    <div class="vet-cards">
+      <div class="vet-card">
+        <h3>Misión</h3>
+        <p>Brindar atención veterinaria de calidad, cercana y responsable para mejorar la vida de las mascotas y sus familias.</p>
+      </div>
+      <div class="vet-card">
+        <h3>Visión</h3>
+        <p>Ser la clínica veterinaria de confianza de nuestra comunidad, reconocida por su calidez y excelencia médica.</p>
+      </div>
+      <div class="vet-card">
+        <h3>Valores</h3>
+        <p>Amor por los animales, honestidad, compromiso, respeto y mejora constante.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUESTRO EQUIPO -->
+  <section class="vet-section vet-section-alt">
+    <div class="vet-section-inner">
+      <div class="vet-section-head">
+        <h2>Nuestro equipo</h2>
+        <p>Profesionales que aman a los animales tanto como tú.</p>
+      </div>
+      <div class="vet-grid">
+        {equipo.map((persona) => (
+          <div class="vet-team-card">
+            <span class="vet-avatar" aria-hidden="true">{persona.iniciales}</span>
+            <h3>{persona.nombre}</h3>
+            <span class="vet-team-role">{persona.puesto}</span>
+            <p>{persona.texto}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALACIONES -->
+  <section class="vet-section">
+    <div class="vet-section-inner vet-split">
+      <Image
+        class="vet-split-img"
+        src={Veterinaria2}
+        alt="Instalaciones de Puppy and Kitty"
+        widths={[480, 800, 1200]}
+        sizes="(max-width: 48em) 100vw, 37rem"
+        format="webp"
+        quality={70}
+      />
+      <div>
+        <h2>Nuestras instalaciones</h2>
+        <p>Un espacio limpio, moderno y pensado para que tu mascota esté tranquila en cada visita.</p>
+        <ul class="vet-checklist">
+          {instalaciones.map((item) => <li>{item}</li>)}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- NUESTRA HISTORIA (SCROLLYTELLING) -->
+  <section class="vet-story" aria-label="Nuestra historia">
+    <!-- Fondo fijo que cambia de imagen según el capítulo activo -->
+    <div class="vet-story-visual" aria-hidden="true">
+      {capitulos.map((capitulo, i) => (
+        <Image class:list={['vet-story-bg', { active: i === 0 }]} src={capitulo.img} alt="" {...fullWidth} />
+      ))}
+      <div class="vet-story-overlay"></div>
+      <ol class="vet-story-dots">
+        {capitulos.map((_, i) => <li class:list={{ active: i === 0 }}></li>)}
+      </ol>
+    </div>
+
+    <!-- Textos que van pasando encima del fondo -->
+    <div class="vet-story-steps">
+      {capitulos.map((capitulo, i) => (
+        <article class:list={['vet-story-step', { active: i === 0 }]} data-index={i}>
+          <div class="vet-story-card">
+            <span class="vet-story-num">{capitulo.etiqueta}</span>
+            <h2>{capitulo.titulo}</h2>
+            <p>{capitulo.texto}</p>
+            {capitulo.stats && (
+              <div class="vet-about-stats">
+                {capitulo.stats.map((stat) => (
+                  <div>
+                    <span class="vet-stat-number">{stat.numero}</span>
+                    <span class="vet-stat-label">{stat.texto}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- PREGUNTAS FRECUENTES -->
+  <section class="vet-section vet-section-alt">
+    <div class="vet-section-inner vet-faq">
+      <div class="vet-section-head">
+        <h2>Preguntas frecuentes</h2>
+        <p>Si tienes otra duda, escríbenos y con gusto te ayudamos.</p>
+      </div>
+      {preguntas.map((item) => (
+        <details>
+          <summary>{item.pregunta}</summary>
+          <p>{item.respuesta}</p>
+        </details>
+      ))}
+    </div>
+  </section>
+
+  <!-- LLAMADO A LA ACCIÓN -->
+  <section class="vet-cta">
+    <h2>Conócenos en persona</h2>
+    <p>Ven a visitarnos con tu mascota. Te mostramos la clínica y resolvemos todas tus dudas.</p>
+    <button class="vet-btn-light">Agendar Cita</button>
+  </section>
+</Layout>
+
+<script>
+  // El capítulo que cruza la mitad de la pantalla se vuelve el activo
+  const steps = document.querySelectorAll<HTMLElement>('.vet-story-step');
+  const groups = [steps, document.querySelectorAll('.vet-story-bg'), document.querySelectorAll('.vet-story-dots li')];
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const active = Number((entry.target as HTMLElement).dataset.index);
+        groups.forEach((group) => group.forEach((el, i) => el.classList.toggle('active', i === active)));
+      });
+    },
+    { rootMargin: '-50% 0px -50% 0px' }
+  );
+  steps.forEach((el) => observer.observe(el));
+</script>

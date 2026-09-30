@@ -1,0 +1,99 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+}
+
+const { title, description } = Astro.props;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content={description} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>{title}</title>
+    <slot name="head" />
+  </head>
+  <body>
+    <div class="vet-container">
+      <!-- NAVEGACIÓN -->
+      <nav class="vet-nav">
+        <a href="/" class="vet-logo">Puppy and <span>Kitty</span></a>
+        <!-- Botón de menú (solo visible en celular) -->
+        <button class="vet-menu-btn" aria-label="Abrir menú" aria-expanded="false">☰</button>
+        <!-- Fondo difuminado: al tocarlo se cierra el menú (solo en celular) -->
+        <div class="vet-menu-backdrop"></div>
+        <div class="vet-nav-menu">
+          <div class="vet-links">
+            <a href="/" class:list={{ active: path === '/' }}>Inicio</a>
+            <a href="#">Servicios</a>
+            <a href="#">Especialistas</a>
+            <a href="/nosotros" class:list={{ active: path === '/nosotros' }}>Nosotros</a>
+          </div>
+          <button class="vet-btn-primary">Agendar Cita</button>
+        </div>
+      </nav>
+
+      <!-- CONTENIDO DE LA PÁGINA ACTUAL -->
+      <main class="vet-main">
+        <slot />
+      </main>
+
+      <!-- FOOTER / INFORMACIÓN DE CONTACTO Y REDES SOCIALES -->
+      <footer class="vet-footer">
+        <div class="vet-footer-content">
+          <div class="footer-col">
+            <h3>Puppy and <span>Kitty</span></h3>
+            <p>Brindando amor y salud para tus mejores amigos desde 2016.</p>
+          </div>
+          <div class="footer-col">
+            <h4>Contacto</h4>
+            <p>📍 Av. de las Mascotas #123, Col. Del Parque</p>
+            <p>📞 Teléfono: +52 (55) 1234-5678</p>
+            <p>✉️ Correo: contacto@puppyandkitty.com</p>
+          </div>
+          <div class="footer-col">
+            <h4>Síguenos en Redes</h4>
+            <div class="social-links">
+              <a href="#" target="_blank" rel="noreferrer">Facebook</a>
+              <a href="#" target="_blank" rel="noreferrer">Instagram</a>
+              <a href="#" target="_blank" rel="noreferrer">WhatsApp</a>
+            </div>
+          </div>
+        </div>
+        <div class="footer-bottom">
+          <p>&copy; 2026 Puppy and Kitty. Proyecto escolar de veterinaria.</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<script>
+  // Menú de celular: abrir/cerrar, bloquear el scroll y cerrar con Esc
+  const btn = document.querySelector<HTMLButtonElement>('.vet-menu-btn')!;
+  const menu = document.querySelector('.vet-nav-menu')!;
+  const backdrop = document.querySelector('.vet-menu-backdrop')!;
+
+  const setOpen = (open: boolean) => {
+    menu.classList.toggle('open', open);
+    backdrop.classList.toggle('open', open);
+    btn.textContent = open ? '✕' : '☰';
+    btn.setAttribute('aria-label', open ? 'Cerrar menú' : 'Abrir menú');
+    btn.setAttribute('aria-expanded', String(open));
+    document.body.style.overflow = open ? 'hidden' : '';
+  };
+
+  btn.addEventListener('click', () => setOpen(!menu.classList.contains('open')));
+  backdrop.addEventListener('click', () => setOpen(false));
+  menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') setOpen(false);
+  });
+</script>

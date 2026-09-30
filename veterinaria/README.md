@@ -1,16 +1,21 @@
-# React + Vite
+# Puppy and Kitty — Sitio web
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Sitio estático hecho con [Astro](https://astro.build). Las páginas se generan como HTML
+en el build; solo se envía un poco de JavaScript para el menú, el carrusel y la historia de "Nosotros".
 
-Currently, two official plugins are available:
+## Comandos
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+| Comando           | Acción                                          |
+| ----------------- | ----------------------------------------------- |
+| `npm install`     | Instala dependencias                            |
+| `npm run dev`     | Servidor de desarrollo en `localhost:4321`      |
+| `npm run build`   | Genera el sitio en `dist/`                      |
+| `npm run preview` | Sirve `dist/` para probar el build              |
 
-## React Compiler
+## Estructura
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- `src/layouts/Layout.astro` — `<head>`, navegación y footer compartidos
+- `src/pages/index.astro` — Inicio (`/`)
+- `src/pages/nosotros.astro` — Nosotros (`/nosotros`)
+- `src/styles/global.css` — estilos
+- `src/assets/` — imágenes originales; Astro las convierte a WebP en varios tamaños con `<Image>`
