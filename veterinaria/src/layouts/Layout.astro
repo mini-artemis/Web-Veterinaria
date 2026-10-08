@@ -1,4 +1,6 @@
 ---
+import { Image } from 'astro:assets';
+import logo from '../assets/logo.png';
 import '../styles/global.css';
 
 interface Props {
@@ -37,6 +39,8 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
             <a href="/nosotros" class:list={{ active: path === '/nosotros' }}>Nosotros</a>
           </div>
           <button class="vet-btn-primary">Agendar Cita</button>
+          <!-- Logo debajo del menú (solo visible en celular) -->
+          <Image class="vet-menu-logo" src={logo} alt="Logo de Puppys and Kitty" width={640} loading="lazy" />
         </div>
       </nav>
 
