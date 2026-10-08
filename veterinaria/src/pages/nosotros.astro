@@ -1,7 +1,9 @@
 ---
+import type { ImageMetadata } from 'astro';
 import { Image } from 'astro:assets';
 import Layout from '../layouts/Layout.astro';
 import logoVeterinaria from '../assets/LogoVeterinaria.jpeg';
+import mascotas from '../assets/mascotas.jpeg';
 import Veterinaria1 from '../assets/Veterinaria1.jpeg';
 import Veterinaria2 from '../assets/Veterinaria2.jpeg';
 
@@ -39,6 +41,42 @@ const equipo = [
   { iniciales: 'AG', nombre: 'Dr. Ángel Garcia', puesto: 'Medicina felina', texto: 'Experto en el cuidado de gatos y en consultas libres de estrés.' },
   { iniciales: 'JT', nombre: 'Jorge Torres', puesto: 'Estilista canino', texto: 'Se encarga de que cada mascota salga limpia, bonita y tranquila.' },
 ];
+
+// Organigrama: la dirección arriba y, debajo, cada área de mayor a menor puesto.
+// Para ponerle foto a alguien: importa la imagen arriba y agrega `foto: laImagen` a su puesto.
+type Puesto = { nombre: string; puesto: string; correo: string; telefono: string; foto?: ImageMetadata };
+
+const organigrama: { direccion: Puesto[]; areas: Puesto[][] } = {
+  direccion: [
+    { nombre: 'María Fernanda Velázquez Miranda', puesto: 'Directora general', correo: 'fernanda.velazquez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 101' },
+    { nombre: 'Ángel Emiliano García Nájera', puesto: 'Subdirector general', correo: 'angel.garcia@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 102' },
+  ],
+  areas: [
+    [
+      { nombre: 'María del Carmen Barajas Galicia', puesto: 'Jefa de cirugía', correo: 'carmen.barajas@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 103' },
+      { nombre: 'Luis Arturo Joaquín Landa', puesto: 'Médico cirujano', correo: 'luis.joaquin@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 104' },
+      { nombre: 'Azeneth García García', puesto: 'Auxiliar de limpieza', correo: 'azeneth.garcia@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 105' },
+    ],
+    [
+      { nombre: 'Abraham Enrique Becerril Téllez', puesto: 'Jefe de medicina general', correo: 'abraham.becerril@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 106' },
+      { nombre: 'Eder Alyarimi Martínez Silva', puesto: 'Médico veterinario', correo: 'eder.martinez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 107' },
+      { nombre: 'Román Gutiérrez Ocampo', puesto: 'Encargado de jaulas', correo: 'roman.gutierrez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 108' },
+    ],
+    [
+      { nombre: 'Ángel Ismael Flores Flores', puesto: 'Jefe de administración', correo: 'ismael.flores@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 109' },
+      { nombre: 'Juan Eduardo Ocampo Castillo', puesto: 'Contador', correo: 'juan.ocampo@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 110' },
+      { nombre: 'Marcos Arif Hernández Ostos', puesto: 'Mensajero', correo: 'marcos.hernandez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 111' },
+    ],
+    [
+      { nombre: 'Eduardo García Harrison', puesto: 'Jefe de estética', correo: 'eduardo.garcia@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 112' },
+      { nombre: 'Eros Ramsés Román Tapia', puesto: 'Estilista canino', correo: 'eros.roman@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 113' },
+      { nombre: 'Nicolás Giles Calva', puesto: 'Auxiliar de baño', correo: 'nicolas.giles@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 114' },
+    ],
+  ],
+};
+
+// Convierte el teléfono en un enlace para llamar (la extensión va después de una coma)
+const telHref = (telefono: string) => 'tel:' + telefono.replace(' ext. ', ',').replace(/[^\d+,]/g, '');
 
 // Lo que hay dentro de la clínica
 const instalaciones = [
@@ -80,11 +118,21 @@ const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'web
       Somos una clínica veterinaria familiar dedicada al bienestar de perros, gatos y otras mascotas pequeñas.
       Todo lo que hacemos parte de estas tres ideas.
     </p>
-    <div class="vet-cards">
+    <div class="vet-cards vet-cards-mascota">
       <div class="vet-card">
         <h3>Misión</h3>
         <p>Brindar atención veterinaria de calidad, cercana y responsable para mejorar la vida de las mascotas y sus familias.</p>
       </div>
+      <!-- Imagen de las mascotas en medio de las tarjetas -->
+      <Image
+        class="vet-cards-img"
+        src={mascotas}
+        alt="Puppy y Kitty, las mascotas de la clínica"
+        widths={[480, 800, 1200]}
+        sizes="(max-width: 48em) 100vw, 29rem"
+        format="webp"
+        quality={70}
+      />
       <div class="vet-card">
         <h3>Visión</h3>
         <p>Ser la clínica veterinaria de confianza de nuestra comunidad, reconocida por su calidez y excelencia médica.</p>
@@ -116,8 +164,64 @@ const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'web
     </div>
   </section>
 
-  <!-- INSTALACIONES -->
+  <!-- ORGANIGRAMA -->
   <section class="vet-section">
+    <div class="vet-section-inner">
+      <div class="vet-section-head">
+        <h2>Organigrama</h2>
+        <p>Así está organizada nuestra clínica.</p>
+      </div>
+      <div class="vet-org">
+        <div class="vet-org-top">
+          {organigrama.direccion.map((persona) => (
+            <div class="vet-org-node vet-org-node-main" tabindex="0">
+              {persona.foto ? (
+                <Image class="vet-org-photo" src={persona.foto} alt="" width={160} height={160} />
+              ) : (
+                <div class="vet-org-photo" aria-hidden="true">👤</div>
+              )}
+              <strong>{persona.nombre}</strong>
+              <span>{persona.puesto}</span>
+              <!-- Contacto: aparece al pasar el mouse o al tocar la tarjeta -->
+              <div class="vet-org-contact">
+                <div>
+                  <a href={`mailto:${persona.correo}`}>✉️ {persona.correo}</a>
+                  <a href={telHref(persona.telefono)}>📞 {persona.telefono}</a>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div class="vet-org-areas">
+          {organigrama.areas.map((area) => (
+            <div class="vet-org-area">
+              {area.map((persona) => (
+                <div class="vet-org-node" tabindex="0">
+                  {persona.foto ? (
+                    <Image class="vet-org-photo" src={persona.foto} alt="" width={160} height={160} />
+                  ) : (
+                    <div class="vet-org-photo" aria-hidden="true">👤</div>
+                  )}
+                  <strong>{persona.nombre}</strong>
+                  <span>{persona.puesto}</span>
+                  <!-- Contacto: aparece al pasar el mouse o al tocar la tarjeta -->
+                  <div class="vet-org-contact">
+                    <div>
+                      <a href={`mailto:${persona.correo}`}>✉️ {persona.correo}</a>
+                      <a href={telHref(persona.telefono)}>📞 {persona.telefono}</a>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- INSTALACIONES -->
+  <section class="vet-section vet-section-alt">
     <div class="vet-section-inner vet-split">
       <Image
         class="vet-split-img"
