@@ -1,0 +1,33 @@
+---
+import type { ImageMetadata } from 'astro';
+import { Image } from 'astro:assets';
+
+interface Props {
+  persona: { nombre: string; puesto: string; correo: string; telefono: string; foto?: ImageMetadata };
+}
+
+const { persona } = Astro.props;
+
+// Convierte el teléfono en un enlace para llamar (la extensión va después de una coma)
+const telHref = 'tel:' + persona.telefono.replace(' ext. ', ',').replace(/[^\d+,]/g, '');
+---
+
+<!-- Tarjeta del organigrama: foto (en blanco y negro hasta pasar el mouse), nombre y, abajo, la franja con el puesto -->
+<div class="vet-org-node" tabindex="0">
+  <div class="vet-org-body">
+    {persona.foto ? (
+      <Image class="vet-org-photo" src={persona.foto} alt="" width={160} height={160} />
+    ) : (
+      <div class="vet-org-photo" aria-hidden="true">👤</div>
+    )}
+    <strong>{persona.nombre}</strong>
+  </div>
+  <span class="vet-org-role">{persona.puesto}</span>
+  <!-- Contacto: sale deslizándose desde la tarjeta al pasar el mouse o al tocarla -->
+  <div class="vet-org-contact">
+    <div>
+      <a href={`mailto:${persona.correo}`}>✉️ {persona.correo}</a>
+      <a href={telHref}>📞 {persona.telefono}</a>
+    </div>
+  </div>
+</div>
