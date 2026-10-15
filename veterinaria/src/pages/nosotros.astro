@@ -5,6 +5,7 @@ import Layout from '../layouts/Layout.astro';
 import OrgCard from '../components/OrgCard.astro';
 import logoVeterinaria from '../assets/LogoVeterinaria.jpeg';
 import mascotas from '../assets/mascotas.jpeg';
+import instalaciones7 from '../assets/Instalaciones7.jpeg';
 // Fotos del organigrama
 import fotoMariaF from '../assets/img/img/MariaF.webp';
 import fotoAngelG from '../assets/img/img/AngelG.webp';
@@ -80,13 +81,13 @@ const organigrama: { direccion: Puesto; subdireccion: Puesto; administracion: Pu
       { nombre: 'Azeneth García García', puesto: 'Auxiliar de limpieza', correo: 'azeneth.garcia@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 105', foto: fotoAzenet },
     ],
     [
-      { nombre: 'Abraham Enrique Becerril Téllez', puesto: 'Jefe de medicina general', correo: 'abraham.becerril@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 106', foto: fotoEnrique },
+      { nombre: 'Eros Ramsés Román Tapia', puesto: 'Jefe de medicina general', correo: 'eros.roman@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 113', foto: fotoEros },
       { nombre: 'Eder Alyarimi Martínez Silva', puesto: 'Médico veterinario', correo: 'eder.martinez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 107', foto: fotoEder },
       { nombre: 'Román Gutiérrez Ocampo', puesto: 'Encargado de jaulas', correo: 'roman.gutierrez@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 108', foto: fotoRoman },
     ],
     [
       { nombre: 'Eduardo García Harrison', puesto: 'Jefe de estética', correo: 'eduardo.garcia@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 112', foto: fotoEduardo },
-      { nombre: 'Eros Ramsés Román Tapia', puesto: 'Estilista canino', correo: 'eros.roman@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 113', foto: fotoEros },
+      { nombre: 'Abraham Enrique Becerril Téllez', puesto: 'Estilista canino', correo: 'abraham.becerril@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 106', foto: fotoEnrique },
       { nombre: 'Nicolás Giles Calva', puesto: 'Auxiliar de baño', correo: 'nicolas.giles@puppyandkitty.com', telefono: '+52 (55) 1234-5678 ext. 114', foto: fotoNico },
     ],
   ],
@@ -266,11 +267,11 @@ const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'web
   <section class="vet-section">
     <div class="vet-section-inner vet-split">
       <Image
-        class="vet-split-img"
-        src={Veterinaria2}
+        class="vet-split-img vet-split-img-instalaciones"
+        src={instalaciones7}
         alt="Instalaciones de Puppy and Kitty"
         widths={[480, 800, 1200]}
-        sizes="(max-width: 48em) 100vw, 37rem"
+        sizes="(max-width: 48em) 100vw, 26rem"
         format="webp"
         quality={70}
       />
