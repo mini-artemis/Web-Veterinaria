@@ -1,3 +1,6 @@
+/* Colores: el verde principal es #0f766e (contraste 5.5:1 sobre blanco, cumple WCAG AA).
+   Sobre el fondo oscuro del footer se usa uno claro (#2dd4bf). */
+
 /* Estilos base: se respeta el tamaño de letra que el usuario elige en su navegador */
 *,
 *::before,
@@ -63,7 +66,7 @@ img {
 }
 
 .vet-logo span {
-  color: #0d9488;
+  color: #0f766e;
 }
 
 .vet-nav-menu {
@@ -86,7 +89,7 @@ img {
 
 .vet-links a:hover,
 .vet-links a.active {
-  color: #0d9488;
+  color: #0f766e;
 }
 
 /* Botón hamburguesa (oculto en escritorio) */
@@ -113,7 +116,7 @@ img {
 
 /* Botones */
 .vet-btn-primary {
-  background-color: #0d9488;
+  background-color: #0f766e;
   color: white;
   border: none;
   padding: 0.625em 1.25em;
@@ -125,7 +128,7 @@ img {
 }
 
 .vet-btn-primary:hover {
-  background-color: #0f766e;
+  background-color: #115e59;
 }
 
 .vet-btn-light {
@@ -153,6 +156,7 @@ img {
   justify-content: center;
   text-align: center;
   color: white;
+  background-color: #1f2937; /* respaldo detrás de la imagen: asegura contraste del texto blanco */
   padding: 3rem clamp(3.5rem, 8vw, 6rem);
 }
 
@@ -263,7 +267,7 @@ img {
   border-radius: 0.75rem;
   box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
   text-align: left;
-  border-top: 0.25rem solid #0d9488;
+  border-top: 0.25rem solid #0f766e;
 }
 
 .vet-card h3 {
@@ -311,6 +315,7 @@ img {
   overflow: hidden;
   isolation: isolate; /* la imagen y el oscurecido quedan detrás del texto */
   color: white;
+  background-color: #1f2937; /* respaldo detrás de la imagen: asegura contraste del texto blanco */
   text-align: center;
   padding: clamp(3.5rem, 10vw, 6rem) 1rem;
 }
@@ -430,7 +435,7 @@ img {
 .vet-story-card {
   max-width: 30rem;
   background-color: rgba(255, 255, 255, 0.94);
-  border-top: 0.25rem solid #0d9488;
+  border-top: 0.25rem solid #0f766e;
   border-radius: 0.75rem;
   padding: clamp(1.5rem, 4vw, 2.5rem);
   box-shadow: 0 0.75rem 2rem rgba(0, 0, 0, 0.25);
@@ -445,7 +450,7 @@ img {
 }
 
 .vet-story-num {
-  color: #0d9488;
+  color: #0f766e;
   font-weight: 900;
   font-size: 0.875rem;
   letter-spacing: 0.1em;
@@ -482,7 +487,7 @@ img {
   display: block;
   font-size: 1.5rem;
   font-weight: 900;
-  color: #0d9488;
+  color: #0f766e;
 }
 
 .vet-stat-label {
@@ -614,7 +619,7 @@ img {
   height: 3rem;
   margin: 0 auto 1rem;
   border-radius: 50%;
-  background-color: #0d9488;
+  background-color: #0f766e;
   color: white;
   font-size: 1.25rem;
   font-weight: 900;
@@ -626,14 +631,14 @@ img {
   padding: 1.5rem;
   border-radius: 0.75rem;
   background-color: #f9fafb;
-  border-left: 0.25rem solid #0d9488;
+  border-left: 0.25rem solid #0f766e;
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
 .vet-stars {
-  color: #f59e0b;
+  color: #b45309;
   letter-spacing: 0.1em;
 }
 
@@ -696,7 +701,7 @@ img {
 
 .vet-hours div:last-child {
   border-bottom: none;
-  color: #0d9488;
+  color: #0f766e;
   font-weight: bold;
 }
 
@@ -714,7 +719,8 @@ img {
   padding: clamp(2.5rem, 6vw, 4rem) 1rem;
   text-align: center;
   color: white;
-  background: linear-gradient(135deg, #0d9488, #0f766e);
+  background-color: #0f766e; /* respaldo del degradado */
+  background-image: linear-gradient(135deg, #0f766e, #115e59);
 }
 
 .vet-cta h2 {
@@ -744,7 +750,8 @@ img {
   height: 4.5rem;
   margin: 0 auto 1rem;
   border-radius: 50%;
-  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  background-color: #0f766e;
+  background-image: linear-gradient(135deg, #0f766e, #115e59);
   color: white;
   font-size: 1.375rem;
   font-weight: 900;
@@ -753,7 +760,7 @@ img {
 .vet-team-role {
   display: block;
   margin-bottom: 0.75rem;
-  color: #0d9488;
+  color: #0f766e;
   font-size: 0.875rem;
   font-weight: 600;
 }
@@ -768,7 +775,7 @@ img {
 .vet-org-node {
   position: relative;
   width: 100%;
-  border: 0.125rem solid #0d9488;
+  border: 0.125rem solid #0f766e;
   border-radius: 0.75rem;
   background-color: white;
   box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
@@ -814,14 +821,14 @@ img {
   display: block;
   padding: 0.375rem 0.5rem;
   border-radius: 0 0 0.5rem 0.5rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
   color: white;
   font-size: 0.8125rem;
   font-weight: 600;
 }
 
 .vet-org-node:focus-visible {
-  outline: 0.125rem solid #0d9488;
+  outline: 0.125rem solid #0f766e;
   outline-offset: 0.125rem;
 }
 
@@ -913,7 +920,7 @@ img {
   left: 50%;
   width: 0.125rem;
   margin-left: -0.0625rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
 }
 
 /* Rama izquierda y tarjeta derecha: cada una se une a la línea central con un tramo horizontal */
@@ -928,7 +935,7 @@ img {
   top: 5.5rem;
   width: 2.5rem;
   height: 0.125rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
 }
 
 .vet-org-side-left {
@@ -978,7 +985,7 @@ img {
   width: 0.125rem;
   height: 1.5rem;
   margin-left: -0.0625rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
 }
 
 /* Barra horizontal que une las áreas */
@@ -989,7 +996,7 @@ img {
   left: 0;
   right: 0;
   height: 0.125rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
 }
 
 .vet-org-area:first-child::after {
@@ -1014,7 +1021,7 @@ img {
   content: '';
   position: absolute;
   left: -1.125rem;
-  background-color: #0d9488;
+  background-color: #0f766e;
 }
 
 /* Tramo horizontal hacia la tarjeta */
@@ -1045,10 +1052,19 @@ img {
 
 .vet-split-img {
   width: 100%;
+  height: auto; /* sin esto toma la altura del atributo height y la imagen se alarga */
   aspect-ratio: 4 / 3;
   object-fit: cover;
   border-radius: 0.75rem;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+}
+
+/* La foto de instalaciones es vertical: se muestra vertical (3:4) para recortarla poco */
+.vet-split-img-instalaciones {
+  aspect-ratio: 3 / 4;
+  max-width: 26rem;
+  margin: 0 auto;
+  object-position: 50% 55%;
 }
 
 .vet-split p {
@@ -1073,7 +1089,7 @@ img {
   content: '✓';
   position: absolute;
   left: 0;
-  color: #0d9488;
+  color: #0f766e;
   font-weight: 900;
 }
 
@@ -1097,7 +1113,7 @@ img {
 }
 
 .vet-faq summary::marker {
-  color: #0d9488;
+  color: #0f766e;
 }
 
 .vet-faq details p {
@@ -1136,7 +1152,7 @@ img {
 }
 
 .footer-col h3 span {
-  color: #0d9488;
+  color: #2dd4bf;
 }
 
 .footer-col h4 {
@@ -1159,7 +1175,7 @@ img {
 }
 
 .social-links a {
-  color: #0d9488;
+  color: #2dd4bf;
   text-decoration: none;
   font-weight: bold;
   background-color: rgba(13, 148, 136, 0.1);
@@ -1170,7 +1186,7 @@ img {
 }
 
 .social-links a:hover {
-  background-color: #0d9488;
+  background-color: #0f766e;
   color: white;
 }
 
