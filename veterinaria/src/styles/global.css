@@ -289,10 +289,13 @@ img {
 
 .vet-cards-img {
   width: 100%;
-  max-width: 16rem;
-  height: auto; /* conserva la proporción original de la foto */
+  max-width: 14rem;
+  height: auto;
+  aspect-ratio: 1; /* círculo: se recorta la foto, no se deforma */
+  object-fit: cover;
+  object-position: 55% 50%; /* centrado en el perro y el gato */
   margin: 0 auto;
-  border-radius: 0.75rem;
+  border-radius: 50%;
   box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
 }
 
@@ -495,7 +498,9 @@ img {
     transform: none;
   }
 
-  .vet-org-contact {
+  .vet-org-contact,
+  .vet-org-contact > div,
+  .vet-org-photo {
     transition: none;
   }
 }
@@ -754,19 +759,16 @@ img {
 }
 
 /* Organigrama: las líneas se dibujan con ::before y ::after */
-.vet-org-top,
-.vet-org-area {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+.vet-org {
+  max-width: 60rem;
+  margin: 0 auto;
 }
 
+/* Tarjeta (todas iguales): foto y nombre arriba, franja con el puesto abajo */
 .vet-org-node {
   position: relative;
   width: 100%;
-  max-width: 16rem;
-  padding: 0.75rem 1rem;
-  border-top: 0.25rem solid #0d9488;
+  border: 0.125rem solid #0d9488;
   border-radius: 0.75rem;
   background-color: white;
   box-shadow: 0 0.25rem 0.375rem rgba(0, 0, 0, 0.05);
@@ -774,7 +776,12 @@ img {
   overflow-wrap: anywhere;
 }
 
-/* Foto del puesto (o el espacio vacío mientras no haya foto) */
+.vet-org-body {
+  padding: 0.75rem 0.75rem 0.625rem;
+}
+
+/* Foto del puesto (o el espacio vacío mientras no haya foto):
+   en blanco y negro, y a color al pasar el mouse por la tarjeta */
 .vet-org-photo {
   display: grid;
   place-items: center;
@@ -783,48 +790,55 @@ img {
   margin: 0 auto 0.5rem;
   border-radius: 50%;
   object-fit: cover;
-  background-color: rgba(13, 148, 136, 0.1);
+  background-color: rgba(13, 148, 136, 0.15);
   font-size: 1.75rem;
   line-height: 1;
+  filter: grayscale(1);
+  transition: filter 0.3s ease;
 }
 
-.vet-org-node-main .vet-org-photo {
-  background-color: rgba(255, 255, 255, 0.2);
+.vet-org-node:hover .vet-org-photo,
+.vet-org-node:focus .vet-org-photo,
+.vet-org-node:focus-within .vet-org-photo {
+  filter: none;
 }
 
 .vet-org-node strong {
   display: block;
   font-size: 0.9375rem;
+  line-height: 1.3;
   color: #1f2937;
 }
 
-.vet-org-node span {
+.vet-org-role {
+  display: block;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  background-color: #0d9488;
+  color: white;
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #0d9488;
 }
 
-/* Correo y teléfono: globo que aparece al pasar el mouse o enfocar la tarjeta */
+.vet-org-node:focus-visible {
+  outline: 0.125rem solid #0d9488;
+  outline-offset: 0.125rem;
+}
+
+/* Correo y teléfono: el globo sale deslizándose desde la tarjeta hacia la derecha.
+   El contenedor recorta al globo mientras está escondido detrás del borde. */
 .vet-org-contact {
   position: absolute;
-  top: 100%;
-  left: 50%;
+  top: 50%;
+  left: 100%;
   z-index: 5;
   width: max-content;
   max-width: min(18rem, 90vw);
-  padding-top: 0.375rem; /* sin hueco, para poder mover el mouse al globo */
-  transform: translate(-50%, -0.25rem);
-  opacity: 0;
+  padding: 0.5rem 0.75rem 0.5rem 0.5rem;
+  overflow: hidden;
+  transform: translateY(-50%);
   visibility: hidden;
-  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
-}
-
-.vet-org-node:hover .vet-org-contact,
-.vet-org-node:focus-within .vet-org-contact,
-.vet-org-node:focus .vet-org-contact {
-  transform: translate(-50%, 0);
-  opacity: 1;
-  visibility: visible;
+  transition: visibility 0.3s;
 }
 
 .vet-org-contact > div {
@@ -833,8 +847,10 @@ img {
   padding: 0.625rem 0.875rem;
   border-radius: 0.5rem;
   background-color: #1f2937;
-  box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.2);
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.2);
   text-align: left;
+  transform: translateX(calc(-100% - 0.5rem));
+  transition: transform 0.3s ease;
 }
 
 .vet-org-contact a {
@@ -847,56 +863,105 @@ img {
   text-decoration: underline;
 }
 
-.vet-org-node:focus-visible {
-  outline: 0.125rem solid #0d9488;
-  outline-offset: 0.125rem;
+/* En las tarjetas de la orilla derecha no cabe si la pantalla no es muy ancha: sale hacia la izquierda */
+@media (max-width: 100em) {
+  .vet-org-area:last-child .vet-org-contact,
+  .vet-org-side-right .vet-org-contact {
+    left: auto;
+    right: 100%;
+    padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+  }
+
+  .vet-org-area:last-child .vet-org-contact > div,
+  .vet-org-side-right .vet-org-contact > div {
+    transform: translateX(calc(100% + 0.5rem));
+  }
 }
 
-/* Dirección: tarjetas resaltadas */
-.vet-org-node-main {
-  border-top: none;
-  background: linear-gradient(135deg, #0d9488, #0f766e);
+.vet-org .vet-org-node:hover .vet-org-contact,
+.vet-org .vet-org-node:focus .vet-org-contact,
+.vet-org .vet-org-node:focus-within .vet-org-contact {
+  visibility: visible;
 }
 
-.vet-org-node-main strong,
-.vet-org-node-main span {
-  color: white;
+.vet-org .vet-org-node:hover .vet-org-contact > div,
+.vet-org .vet-org-node:focus .vet-org-contact > div,
+.vet-org .vet-org-node:focus-within .vet-org-contact > div {
+  transform: none;
 }
 
-/* Línea vertical entre un puesto y el de arriba */
-.vet-org-node + .vet-org-node {
-  margin-top: 1.5rem;
+/* Ancho de cada rama (jefe + subordinados) y de la tarjeta principal */
+.vet-org-root,
+.vet-org-branch {
+  max-width: 14rem;
+  margin: 0 auto;
 }
 
-.vet-org-node + .vet-org-node::before,
-.vet-org-areas::before,
-.vet-org-area::before {
+/* Línea central: baja desde la tarjeta principal hasta la barra de las áreas */
+.vet-org-staff {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  padding-bottom: 2rem;
+}
+
+.vet-org-staff::before {
   content: '';
   position: absolute;
+  top: 0;
+  bottom: 0;
   left: 50%;
   width: 0.125rem;
-  height: 1.5rem;
   margin-left: -0.0625rem;
   background-color: #0d9488;
 }
 
-.vet-org-node + .vet-org-node::before {
-  bottom: calc(100% + 0.25rem); /* por encima del borde superior */
-}
-
-.vet-org-node-main + .vet-org-node-main::before {
-  bottom: 100%;
-}
-
-.vet-org-areas {
+/* Rama izquierda y tarjeta derecha: cada una se une a la línea central con un tramo horizontal */
+.vet-org-side {
   position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  margin-top: 1.5rem;
+  padding-top: 1.5rem;
 }
 
-.vet-org-areas::before {
-  bottom: 100%;
+.vet-org-side::before {
+  content: '';
+  position: absolute;
+  top: 5.5rem;
+  width: 2.5rem;
+  height: 0.125rem;
+  background-color: #0d9488;
+}
+
+.vet-org-side-left {
+  padding-right: 2.5rem;
+}
+
+.vet-org-side-left .vet-org-branch {
+  margin-right: 0;
+}
+
+.vet-org-side-left::before {
+  right: 0;
+}
+
+/* La tarjeta derecha va más abajo que la rama izquierda */
+.vet-org-side-right {
+  padding-top: 9rem;
+  padding-left: 2.5rem;
+}
+
+.vet-org-side-right .vet-org-branch {
+  margin-left: 0;
+}
+
+.vet-org-side-right::before {
+  top: 13rem;
+  left: 0;
+}
+
+/* Las tres áreas de abajo */
+.vet-org-areas {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
 }
 
 .vet-org-area {
@@ -904,11 +969,19 @@ img {
   padding: 1.5rem 0.5rem 0;
 }
 
+/* Bajada de la barra a cada área */
 .vet-org-area::before {
+  content: '';
+  position: absolute;
   top: 0;
+  left: 50%;
+  width: 0.125rem;
+  height: 1.5rem;
+  margin-left: -0.0625rem;
+  background-color: #0d9488;
 }
 
-/* Línea horizontal que une las áreas */
+/* Barra horizontal que une las áreas */
 .vet-org-area::after {
   content: '';
   position: absolute;
@@ -925,6 +998,41 @@ img {
 
 .vet-org-area:last-child::after {
   right: 50%;
+}
+
+/* Subordinados: cuelgan en escalera de una línea que baja por la izquierda del jefe */
+.vet-org-subs {
+  margin-left: 2rem;
+}
+
+.vet-org-subs .vet-org-node {
+  margin-top: 1rem;
+}
+
+.vet-org-subs .vet-org-node::before,
+.vet-org-subs .vet-org-node::after {
+  content: '';
+  position: absolute;
+  left: -1.125rem;
+  background-color: #0d9488;
+}
+
+/* Tramo horizontal hacia la tarjeta */
+.vet-org-subs .vet-org-node::before {
+  top: 50%;
+  width: 1rem;
+  height: 0.125rem;
+}
+
+/* Tramo vertical: llega hasta el siguiente, o termina a la mitad en el último */
+.vet-org-subs .vet-org-node::after {
+  top: -1.125rem;
+  bottom: -0.125rem;
+  width: 0.125rem;
+}
+
+.vet-org-subs .vet-org-node:last-child::after {
+  bottom: calc(50% - 0.125rem);
 }
 
 /* Imagen + texto lado a lado (instalaciones) */
@@ -1156,14 +1264,57 @@ img {
     grid-column: auto;
   }
 
-  /* Organigrama: las áreas pasan a una sola columna */
+  /* Organigrama: todo en una sola columna, sin la línea central */
+  .vet-org-staff,
   .vet-org-areas {
     grid-template-columns: 1fr;
   }
 
-  .vet-org-area::after,
-  .vet-org-area:not(:first-child)::before {
+  .vet-org-staff {
+    padding-bottom: 0;
+  }
+
+  .vet-org-staff::before,
+  .vet-org-side::before,
+  .vet-org-area::before,
+  .vet-org-area::after {
     display: none;
+  }
+
+  .vet-org-side,
+  .vet-org-area {
+    padding: 1.5rem 0 0;
+  }
+
+  /* El subdirector queda justo debajo de la dirección */
+  .vet-org-side-right {
+    order: -1;
+  }
+
+  .vet-org-root,
+  .vet-org-branch,
+  .vet-org-side .vet-org-branch {
+    max-width: 16rem;
+    margin: 0 auto;
+  }
+
+  /* En celular no hay espacio a los lados: el contacto sale debajo de la tarjeta */
+  .vet-org .vet-org-node .vet-org-contact {
+    top: 100%;
+    left: 50%;
+    right: auto;
+    padding: 0.5rem;
+    transform: translateX(-50%);
+  }
+
+  .vet-org .vet-org-node .vet-org-contact > div {
+    transform: translateY(calc(-100% - 0.5rem));
+  }
+
+  .vet-org .vet-org-node:hover .vet-org-contact > div,
+  .vet-org .vet-org-node:focus .vet-org-contact > div,
+  .vet-org .vet-org-node:focus-within .vet-org-contact > div {
+    transform: none;
   }
 
   .vet-menu-logo {
