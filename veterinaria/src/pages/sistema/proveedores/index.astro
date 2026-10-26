@@ -1,0 +1,59 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import { puede } from '../../../lib/auth';
+import { camposProveedor, type Proveedor } from '../../../lib/proveedores';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso para ver proveedores.', { status: 403 });
+
+// Proveedor que se resalta al llegar desde el inventario (?id=...)
+const seleccionado = Number(Astro.url.searchParams.get('id')) || 0;
+
+const { results: proveedores } = await env.DB.prepare(
+  `SELECT pr.*, (SELECT count(*) FROM productos p WHERE p.proveedor_id = pr.id AND p.activo = 1) AS productos
+     FROM proveedores pr ORDER BY pr.nombre`,
+).all<Proveedor & { productos: number }>();
+---
+
+<SistemaLayout title="Proveedores">
+  <p class="sis-muted">{proveedores.length} proveedor(es). Desliza la tabla hacia los lados para ver todos los campos.</p>
+  <div class="sis-tabla-wrap">
+    <table class="sis-tabla sis-tabla-proveedores">
+      <thead>
+        <tr>
+          {camposProveedor.map(({ etiqueta }) => <th scope="col">{etiqueta}</th>)}
+          <th scope="col">Productos</th>
+        </tr>
+      </thead>
+      <tbody>
+        {proveedores.map((p) => (
+          <tr id={`proveedor-${p.id}`} class:list={{ 'sis-fila-activa': p.id === seleccionado }} aria-current={p.id === seleccionado ? 'true' : undefined}>
+            {camposProveedor.map(({ campo }) => {
+              const valor = p[campo];
+              return campo === 'nombre' ? (
+                <th scope="row">{valor}</th>
+              ) : (
+                <td>
+                  {!valor ? '—'
+                    : campo === 'telefono' ? <a href={`tel:${valor.replace(/\s/g, '')}`}>{valor}</a>
+                    : campo === 'correo' ? <a href={`mailto:${valor}`}>{valor}</a>
+                    : valor}
+                </td>
+              );
+            })}
+            <td><a href={`/sistema/proveedores/${p.id}`}>{p.productos} producto(s)</a></td>
+          </tr>
+        ))}
+        {proveedores.length === 0 && <tr><td colspan={camposProveedor.length + 1} class="sis-muted">No hay proveedores registrados.</td></tr>}
+      </tbody>
+    </table>
+  </div>
+</SistemaLayout>
+
+<script>
+  // Al llegar desde el inventario, desplaza la tabla hasta el proveedor resaltado
+  document.querySelector('.sis-fila-activa')?.scrollIntoView({ block: 'center', inline: 'start' });
+</script>

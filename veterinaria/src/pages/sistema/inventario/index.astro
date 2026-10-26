@@ -1,0 +1,83 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import { puede } from '../../../lib/auth';
+import { pesos } from '../../../lib/forms';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso para ver el inventario.', { status: 403 });
+
+// Filtros de búsqueda (vienen en la URL: ?q=...&categoria=...&bajas=1)
+const q = Astro.url.searchParams.get('q')?.trim() ?? '';
+const categoria = Number(Astro.url.searchParams.get('categoria')) || 0;
+const verBajas = Astro.url.searchParams.get('bajas') === '1';
+
+const [productos, categorias] = await env.DB.batch([
+  env.DB.prepare(
+    `SELECT p.id, p.codigo, p.nombre, p.unidad, p.stock, p.stock_minimo, p.precio_venta, p.fecha_caducidad, p.activo,
+            c.nombre AS categoria, p.proveedor_id, pr.nombre AS proveedor,
+            p.fecha_caducidad IS NOT NULL AND p.fecha_caducidad <= date('now', '+60 days') AS caduca
+       FROM productos p JOIN categorias c ON c.id = p.categoria_id
+       LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+      WHERE (?1 = '' OR p.nombre LIKE '%' || ?1 || '%' OR p.codigo LIKE '%' || ?1 || '%')
+        AND (?2 = 0 OR p.categoria_id = ?2)
+        AND (?3 = 1 OR p.activo = 1)
+      ORDER BY p.nombre`,
+  ).bind(q, categoria, verBajas ? 1 : 0),
+  env.DB.prepare('SELECT id, nombre FROM categorias ORDER BY nombre'),
+]);
+const lista = productos.results as {
+  id: number; codigo: string; nombre: string; unidad: string; stock: number; stock_minimo: number;
+  precio_venta: number; fecha_caducidad: string | null; activo: number; categoria: string; caduca: number;
+  proveedor_id: number | null; proveedor: string | null;
+}[];
+---
+
+<SistemaLayout title="Inventario">
+  <div class="sis-acciones">
+    <form method="get" class="sis-filtros" role="search">
+      <label>Buscar <input type="search" name="q" value={q} placeholder="Nombre o código" /></label>
+      <label>
+        Categoría
+        <select name="categoria">
+          <option value="0">Todas</option>
+          {(categorias.results as { id: number; nombre: string }[]).map((c) => <option value={c.id} selected={c.id === categoria}>{c.nombre}</option>)}
+        </select>
+      </label>
+      <label class="sis-check"><input type="checkbox" name="bajas" value="1" checked={verBajas} /> Incluir dados de baja</label>
+      <button type="submit" class="sis-btn-sec">Filtrar</button>
+    </form>
+    {puede(usuario, 'inventario.editar') && <a href="/sistema/inventario/nuevo" class="vet-btn-primary sis-btn-link">+ Nuevo producto</a>}
+  </div>
+
+  <div class="sis-tabla-wrap">
+    <table class="sis-tabla">
+      <caption class="sis-muted">{lista.length} producto(s)</caption>
+      <thead>
+        <tr><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Categoría</th><th scope="col">Proveedor</th><th scope="col">Stock</th><th scope="col">Caducidad</th><th scope="col">Precio</th></tr>
+      </thead>
+      <tbody>
+        {lista.map((p) => (
+          <tr class:list={{ 'sis-inactivo': p.activo === 0 }}>
+            <td>{p.codigo}</td>
+            <td><a href={`/sistema/inventario/${p.id}`}>{p.nombre}</a>{p.activo === 0 && ' (baja)'}</td>
+            <td>{p.categoria}</td>
+            <td>{p.proveedor_id ? <a href={`/sistema/proveedores?id=${p.proveedor_id}`}>{p.proveedor}</a> : '—'}</td>
+            <td>
+              {p.stock} {p.unidad}
+              {p.stock <= p.stock_minimo && <span class="sis-badge sis-badge-alerta">Bajo</span>}
+            </td>
+            <td>
+              {p.fecha_caducidad ?? '—'}
+              {p.caduca === 1 && <span class="sis-badge sis-badge-aviso">Pronto</span>}
+            </td>
+            <td>{pesos(p.precio_venta)}</td>
+          </tr>
+        ))}
+        {lista.length === 0 && <tr><td colspan="7" class="sis-muted">No se encontraron productos.</td></tr>}
+      </tbody>
+    </table>
+  </div>
+</SistemaLayout>

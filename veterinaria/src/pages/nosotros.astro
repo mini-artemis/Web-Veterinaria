@@ -203,14 +203,19 @@ const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'web
         <h2>Organigrama</h2>
         <p>Así está organizada nuestra clínica.</p>
       </div>
+      <!-- En escritorio todo se acomoda en una cuadrícula (dirección, línea central con dos ramas
+           y abajo las tres áreas). En celular se usan las dos columnas: izquierda y derecha. -->
       <div class="vet-org">
         <!-- Tarjeta principal -->
         <div class="vet-org-root">
           <OrgCard persona={organigrama.direccion} />
         </div>
 
-        <!-- La línea central baja entre la rama izquierda y la tarjeta derecha -->
-        <div class="vet-org-staff">
+        <!-- Línea central entre la dirección y las áreas (solo escritorio) -->
+        <div class="vet-org-trunk" aria-hidden="true"></div>
+
+        <!-- Columna izquierda: administración y el área 1 -->
+        <div class="vet-org-col vet-org-col-left">
           <div class="vet-org-side vet-org-side-left">
             <div class="vet-org-branch">
               <OrgCard persona={organigrama.administracion[0]} />
@@ -219,21 +224,31 @@ const fullWidth = { widths: [640, 960, 1280, 1920], sizes: '100vw', format: 'web
               </div>
             </div>
           </div>
+          {[0].map((i) => (
+            <div class={`vet-org-area vet-org-area-${i + 1}`}>
+              <div class="vet-org-branch">
+                <OrgCard persona={organigrama.areas[i][0]} />
+                <div class="vet-org-subs">
+                  {organigrama.areas[i].slice(1).map((persona) => <OrgCard persona={persona} />)}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <!-- Columna derecha: subdirección y las áreas 2 y 3 -->
+        <div class="vet-org-col vet-org-col-right">
           <div class="vet-org-side vet-org-side-right">
             <div class="vet-org-branch">
               <OrgCard persona={organigrama.subdireccion} />
             </div>
           </div>
-        </div>
-
-        <!-- Continúa hacia abajo: las tres áreas -->
-        <div class="vet-org-areas">
-          {organigrama.areas.map(([jefe, ...subordinados]) => (
-            <div class="vet-org-area">
+          {[1, 2].map((i) => (
+            <div class={`vet-org-area vet-org-area-${i + 1}`}>
               <div class="vet-org-branch">
-                <OrgCard persona={jefe} />
+                <OrgCard persona={organigrama.areas[i][0]} />
                 <div class="vet-org-subs">
-                  {subordinados.map((persona) => <OrgCard persona={persona} />)}
+                  {organigrama.areas[i].slice(1).map((persona) => <OrgCard persona={persona} />)}
                 </div>
               </div>
             </div>

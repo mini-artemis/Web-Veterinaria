@@ -1,0 +1,42 @@
+---
+import Layout from './Layout.astro';
+import { puede } from '../lib/auth';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const usuario = Astro.locals.usuario!;
+const path = Astro.url.pathname.replace(/\/$/, '');
+
+// Pestañas del sistema; cada una aparece solo si el rol tiene el permiso
+const pestanas = [
+  { href: '/sistema', texto: 'Mi perfil', visible: true },
+  { href: '/sistema/inventario', texto: 'Inventario', visible: puede(usuario, 'inventario.ver') },
+  { href: '/sistema/proveedores', texto: 'Proveedores', visible: puede(usuario, 'inventario.ver') },
+  { href: '/sistema/usuarios', texto: 'Usuarios', visible: puede(usuario, 'usuarios.administrar') },
+].filter((p) => p.visible);
+
+const activa = (href: string) => (href === '/sistema' ? path === href : path.startsWith(href));
+---
+
+<Layout title={`${title} | Sistema Puppy and Kitty`} description="Sistema interno de la clínica Puppy and Kitty.">
+  <section class="vet-section">
+    <div class="vet-section-inner">
+      <div class="sis-barra">
+        <nav class="sis-tabs" aria-label="Secciones del sistema">
+          {pestanas.map((p) => <a href={p.href} aria-current={activa(p.href) ? 'page' : undefined}>{p.texto}</a>)}
+        </nav>
+        <div class="sis-sesion">
+          <span>{usuario.nombre} · <strong>{usuario.rol}</strong></span>
+          <form method="post" action="/logout">
+            <button type="submit" class="sis-btn-sec">Cerrar sesión</button>
+          </form>
+        </div>
+      </div>
+      <h1 class="sis-titulo">{title}</h1>
+      <slot />
+    </div>
+  </section>
+</Layout>

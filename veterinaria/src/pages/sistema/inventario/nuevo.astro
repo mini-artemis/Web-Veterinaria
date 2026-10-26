@@ -1,0 +1,61 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import ProductoForm from '../../../components/ProductoForm.astro';
+import { puede } from '../../../lib/auth';
+import { entero } from '../../../lib/forms';
+import { catalogos, leerProducto, mensajeDeError } from '../../../lib/productos';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.editar')) return new Response('No tienes permiso para crear productos.', { status: 403 });
+
+let error = '';
+let valores: Record<string, unknown> = {};
+
+if (Astro.request.method === 'POST') {
+  const datos = await Astro.request.formData();
+  const leido = leerProducto(datos);
+  const stock = entero(datos, 'stock');
+  if (leido.error || !(stock >= 0)) {
+    error = leido.error ?? 'El stock inicial debe ser un número entero de 0 o más.';
+    valores = Object.fromEntries(datos);
+  } else {
+    const p = leido.producto!;
+    try {
+      const creado = await env.DB.prepare(
+        `INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, unidad, precio_compra, precio_venta,
+                                stock, stock_minimo, lote, fecha_caducidad)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+      )
+        .bind(p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
+              stock, p.stock_minimo, p.lote, p.fecha_caducidad)
+        .first<{ id: number }>();
+      // El stock inicial queda registrado como la primera entrada
+      if (stock > 0) {
+        await env.DB.prepare("INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES (?, ?, 'entrada', ?, 'Inventario inicial')")
+          .bind(creado!.id, usuario.id, stock)
+          .run();
+      }
+      return Astro.redirect(`/sistema/inventario/${creado!.id}`);
+    } catch (e) {
+      error = mensajeDeError(e);
+      valores = { ...p, stock };
+    }
+  }
+  // Los <select> comparan números
+  for (const campo of ['categoria_id', 'proveedor_id']) if (valores[campo]) valores[campo] = Number(valores[campo]);
+}
+
+const { categorias, proveedores } = await catalogos();
+---
+
+<SistemaLayout title="Nuevo producto">
+  <p><a href="/sistema/inventario">← Volver al inventario</a></p>
+  {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+  <form method="post" class="sis-card sis-form">
+    <ProductoForm categorias={categorias} proveedores={proveedores} producto={valores} conStock />
+    <button type="submit" class="vet-btn-primary">Guardar producto</button>
+  </form>
+</SistemaLayout>

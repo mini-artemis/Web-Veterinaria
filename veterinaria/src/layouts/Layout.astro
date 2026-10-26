@@ -37,6 +37,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
             <a href="#">Servicios</a>
             <a href="#">Especialistas</a>
             <a href="/nosotros" class:list={{ active: path === '/nosotros' }}>Nosotros</a>
+            <a href="/sistema" class:list={{ active: path.startsWith('/sistema') || path === '/login' }}>Mi perfil</a>
           </div>
           <button class="vet-btn-primary">Agendar Cita</button>
           <!-- Logo debajo del menú (solo visible en celular) -->

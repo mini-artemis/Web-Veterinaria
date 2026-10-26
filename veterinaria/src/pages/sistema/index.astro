@@ -1,0 +1,96 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../layouts/SistemaLayout.astro';
+import { hashPassword, puede, verificarPassword } from '../../lib/auth';
+import { texto } from '../../lib/forms';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+let mensaje = '';
+let error = '';
+
+// Cambio de contraseña
+if (Astro.request.method === 'POST') {
+  const datos = await Astro.request.formData();
+  const actual = texto(datos, 'actual');
+  const nueva = texto(datos, 'nueva');
+  const fila = await env.DB.prepare('SELECT password_hash FROM usuarios WHERE id = ?').bind(usuario.id).first<{ password_hash: string }>();
+  if (!fila || !(await verificarPassword(actual, fila.password_hash))) error = 'La contraseña actual no es correcta.';
+  else if (nueva.length < 8) error = 'La nueva contraseña debe tener al menos 8 caracteres.';
+  else if (nueva !== texto(datos, 'confirmar')) error = 'Las contraseñas nuevas no coinciden.';
+  else {
+    await env.DB.prepare('UPDATE usuarios SET password_hash = ? WHERE id = ?').bind(await hashPassword(nueva), usuario.id).run();
+    mensaje = 'Contraseña actualizada.';
+  }
+}
+
+const { results: permisos } = await env.DB.prepare(
+  `SELECT p.descripcion FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
+    JOIN usuarios u ON u.rol_id = rp.rol_id WHERE u.id = ? ORDER BY p.id`,
+)
+  .bind(usuario.id)
+  .all<{ descripcion: string }>();
+
+// Avisos del inventario: poco stock y caducidad en los próximos 60 días
+const avisos = puede(usuario, 'inventario.ver')
+  ? (
+      await env.DB.prepare(
+        `SELECT id, nombre, stock, stock_minimo, fecha_caducidad,
+                stock <= stock_minimo AS bajo,
+                fecha_caducidad IS NOT NULL AND fecha_caducidad <= date('now', '+60 days') AS caduca
+           FROM productos
+          WHERE activo = 1 AND (stock <= stock_minimo OR (fecha_caducidad IS NOT NULL AND fecha_caducidad <= date('now', '+60 days')))
+          ORDER BY nombre`,
+      ).all<{ id: number; nombre: string; stock: number; stock_minimo: number; fecha_caducidad: string | null; bajo: number; caduca: number }>()
+    ).results
+  : [];
+---
+
+<SistemaLayout title="Mi perfil">
+  <div class="sis-grid">
+    <div class="sis-card">
+      <h2>Mis datos</h2>
+      <dl class="sis-datos">
+        <dt>Nombre</dt><dd>{usuario.nombre}</dd>
+        <dt>Correo</dt><dd>{usuario.correo}</dd>
+        <dt>Rol</dt><dd>{usuario.rol}</dd>
+      </dl>
+      <h3>Lo que puedo hacer</h3>
+      <ul>{permisos.map((p) => <li>{p.descripcion}</li>)}</ul>
+    </div>
+
+    <div class="sis-card">
+      <h2>Cambiar contraseña</h2>
+      {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
+      {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+      <form method="post" class="sis-form">
+        <label>Contraseña actual <input type="password" name="actual" required autocomplete="current-password" /></label>
+        <label>Nueva contraseña <input type="password" name="nueva" required minlength="8" autocomplete="new-password" /></label>
+        <label>Confirmar nueva <input type="password" name="confirmar" required minlength="8" autocomplete="new-password" /></label>
+        <button type="submit" class="vet-btn-primary">Guardar</button>
+      </form>
+    </div>
+  </div>
+
+  {
+    puede(usuario, 'inventario.ver') && (
+      <div class="sis-card">
+        <h2>Avisos del inventario</h2>
+        {avisos.length === 0 ? (
+          <p class="sis-muted">Todo en orden: no hay productos con poco stock ni por caducar.</p>
+        ) : (
+          <ul class="sis-avisos">
+            {avisos.map((a) => (
+              <li>
+                <a href={`/sistema/inventario/${a.id}`}>{a.nombre}</a>
+                {a.bajo === 1 && <span class="sis-badge sis-badge-alerta">Quedan {a.stock} (mínimo {a.stock_minimo})</span>}
+                {a.caduca === 1 && <span class="sis-badge sis-badge-aviso">Caduca {a.fecha_caducidad}</span>}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+</SistemaLayout>

@@ -1,0 +1,125 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import { hashPassword, puede } from '../../../lib/auth';
+import { entero, fechaHora, texto } from '../../../lib/forms';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'usuarios.administrar')) return new Response('No tienes permiso para administrar usuarios.', { status: 403 });
+
+let mensaje = '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const datos = await Astro.request.formData();
+  const accion = texto(datos, 'accion');
+  const id = entero(datos, 'id');
+
+  if (accion === 'crear') {
+    const nombre = texto(datos, 'nombre');
+    const correo = texto(datos, 'correo').toLowerCase();
+    const password = texto(datos, 'password');
+    if (!nombre || !correo) error = 'Nombre y correo son obligatorios.';
+    else if (password.length < 8) error = 'La contraseña debe tener al menos 8 caracteres.';
+    else {
+      try {
+        await env.DB.prepare('INSERT INTO usuarios (nombre, correo, password_hash, rol_id) VALUES (?, ?, ?, ?)')
+          .bind(nombre, correo, await hashPassword(password), entero(datos, 'rol_id'))
+          .run();
+        mensaje = `Usuario ${correo} creado.`;
+      } catch (e) {
+        error = String(e).includes('UNIQUE') ? 'Ya existe un usuario con ese correo.' : 'No se pudo crear el usuario.';
+      }
+    }
+  } else if (id === usuario.id) {
+    // Evita que el administrador se quite a sí mismo el acceso por accidente
+    error = 'No puedes cambiar tu propio rol ni desactivarte.';
+  } else if (accion === 'rol') {
+    await env.DB.prepare('UPDATE usuarios SET rol_id = ? WHERE id = ?').bind(entero(datos, 'rol_id'), id).run();
+    mensaje = 'Rol actualizado.';
+  } else if (accion === 'estado') {
+    // Al desactivar a alguien también se cierran sus sesiones abiertas
+    await env.DB.batch([
+      env.DB.prepare('UPDATE usuarios SET activo = 1 - activo WHERE id = ?').bind(id),
+      env.DB.prepare('DELETE FROM sesiones WHERE usuario_id = ?').bind(id),
+    ]);
+    mensaje = 'Estado del usuario actualizado.';
+  }
+}
+
+const [usuarios, roles] = await env.DB.batch([
+  env.DB.prepare(
+    `SELECT u.id, u.nombre, u.correo, u.rol_id, u.activo, u.ultimo_acceso, r.nombre AS rol
+       FROM usuarios u JOIN roles r ON r.id = u.rol_id ORDER BY u.activo DESC, u.nombre`,
+  ),
+  env.DB.prepare('SELECT id, nombre, descripcion FROM roles ORDER BY id'),
+]);
+const listaUsuarios = usuarios.results as { id: number; nombre: string; correo: string; rol_id: number; activo: number; ultimo_acceso: string | null; rol: string }[];
+const listaRoles = roles.results as { id: number; nombre: string; descripcion: string }[];
+---
+
+<SistemaLayout title="Usuarios y roles">
+  {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
+  {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+
+  <div class="sis-card">
+    <h2>Personal con acceso</h2>
+    <div class="sis-tabla-wrap">
+      <table class="sis-tabla">
+        <thead><tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Último acceso</th><th scope="col">Estado</th></tr></thead>
+        <tbody>
+          {listaUsuarios.map((u) => (
+            <tr class:list={{ 'sis-inactivo': u.activo === 0 }}>
+              <td>{u.nombre}</td>
+              <td>{u.correo}</td>
+              <td>
+                {u.id === usuario.id ? u.rol : (
+                  <form method="post" class="sis-inline">
+                    <input type="hidden" name="accion" value="rol" />
+                    <input type="hidden" name="id" value={u.id} />
+                    <select name="rol_id" aria-label={`Rol de ${u.nombre}`}>
+                      {listaRoles.map((r) => <option value={r.id} selected={r.id === u.rol_id}>{r.nombre}</option>)}
+                    </select>
+                    <button type="submit" class="sis-btn-sec">Cambiar</button>
+                  </form>
+                )}
+              </td>
+              <td>{u.ultimo_acceso ? fechaHora(u.ultimo_acceso) : 'Nunca'}</td>
+              <td>
+                {u.id === usuario.id ? 'Tú' : (
+                  <form method="post" class="sis-inline">
+                    <input type="hidden" name="accion" value="estado" />
+                    <input type="hidden" name="id" value={u.id} />
+                    <button type="submit" class="sis-btn-sec">{u.activo === 1 ? 'Desactivar' : 'Activar'}</button>
+                  </form>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sis-grid">
+    <form method="post" class="sis-card sis-form">
+      <h2>Nuevo usuario</h2>
+      <input type="hidden" name="accion" value="crear" />
+      <label>Nombre <input name="nombre" required maxlength="80" /></label>
+      <label>Correo <input type="email" name="correo" required autocomplete="off" /></label>
+      <label>Contraseña inicial <input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>
+      <label>
+        Rol
+        <select name="rol_id">{listaRoles.map((r) => <option value={r.id}>{r.nombre}</option>)}</select>
+      </label>
+      <button type="submit" class="vet-btn-primary">Crear usuario</button>
+    </form>
+
+    <div class="sis-card">
+      <h2>Roles</h2>
+      <dl class="sis-datos">{listaRoles.map((r) => (<><dt>{r.nombre}</dt><dd>{r.descripcion}</dd></>))}</dl>
+    </div>
+  </div>
+</SistemaLayout>

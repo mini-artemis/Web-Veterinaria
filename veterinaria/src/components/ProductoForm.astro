@@ -1,0 +1,38 @@
+---
+// Campos del formulario de producto (se usa al crear y al editar)
+interface Props {
+  categorias: { id: number; nombre: string }[];
+  proveedores: { id: number; nombre: string }[];
+  producto?: Record<string, unknown>;
+  conStock?: boolean; // el stock solo se captura al crear; después cambia con movimientos
+}
+
+const { categorias, proveedores, producto = {}, conStock = false } = Astro.props;
+const v = (campo: string) => (producto[campo] ?? '') as string;
+---
+
+<div class="sis-form-grid">
+  <label>Código <input name="codigo" value={v('codigo')} required maxlength="30" placeholder="MED-003" /></label>
+  <label class="sis-span-2">Nombre <input name="nombre" value={v('nombre')} required maxlength="120" /></label>
+  <label>
+    Categoría
+    <select name="categoria_id" required>
+      {categorias.map((c) => <option value={c.id} selected={producto.categoria_id === c.id}>{c.nombre}</option>)}
+    </select>
+  </label>
+  <label>
+    Proveedor
+    <select name="proveedor_id">
+      <option value="">— Sin proveedor —</option>
+      {proveedores.map((p) => <option value={p.id} selected={producto.proveedor_id === p.id}>{p.nombre}</option>)}
+    </select>
+  </label>
+  <label>Unidad <input name="unidad" value={v('unidad') || 'pieza'} required maxlength="20" /></label>
+  <label>Precio de compra <input type="number" name="precio_compra" value={v('precio_compra')} min="0" step="0.01" required /></label>
+  <label>Precio de venta <input type="number" name="precio_venta" value={v('precio_venta')} min="0" step="0.01" required /></label>
+  {conStock && <label>Stock inicial <input type="number" name="stock" value="0" min="0" step="1" required /></label>}
+  <label>Stock mínimo <input type="number" name="stock_minimo" value={v('stock_minimo') || 0} min="0" step="1" required /></label>
+  <label>Lote <input name="lote" value={v('lote')} maxlength="30" /></label>
+  <label>Caducidad <input type="date" name="fecha_caducidad" value={v('fecha_caducidad')} /></label>
+  <label class="sis-span-3">Descripción <textarea name="descripcion" rows="2" maxlength="500">{v('descripcion')}</textarea></label>
+</div>

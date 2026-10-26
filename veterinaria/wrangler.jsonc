@@ -1,0 +1,27 @@
+// Configuración de Cloudflare Workers para el sitio y el sistema con login.
+// Guía completa en docs/DESPLIEGUE.md
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "veterinaria",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+
+  // Base de datos (Cloudflare D1, es SQLite). Al crearla con
+  // `pnpm wrangler d1 create veterinaria-db` copia aquí el database_id que te da.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "veterinaria-db",
+      "database_id": "REEMPLAZAR-CON-EL-ID-DE-TU-BASE",
+      "migrations_dir": "migrations"
+    }
+  ],
+
+  // Llave pública de Turnstile (captcha de Cloudflare). Esta es la llave de PRUEBA
+  // que siempre aprueba; en producción cámbiala por la tuya.
+  // La llave secreta NO va aquí: va en .dev.vars (local) y con `wrangler secret put` (producción).
+  "vars": {
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+    "PAISES_PERMITIDOS": "MX"
+  }
+}
