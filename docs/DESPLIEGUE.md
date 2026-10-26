@@ -13,9 +13,14 @@ sitio (solo en Cloudflare, donde existe `WORKERS_CI`).
 Cada push a `main` compila y publica el sitio. El primer `wrangler deploy` crea la base D1
 `veterinaria-db`. Las migraciones de `migrations/` se aplican desde tu computadora.
 
-Las vistas previas de los PR (`wrangler preview`) usan la misma base de datos, pero sus secretos van
-aparte: para probar el login en un PR, agrega `TURNSTILE_SECRET_KEY` también con
-`pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`.
+Las vistas previas de los PR (`wrangler preview`) **no heredan** la configuración de producción: solo
+usan lo que está en el bloque `previews` de [`wrangler.jsonc`](../wrangler.jsonc). Ahí ya están las
+variables, así que Inicio y Nosotros se ven, pero el login no funciona en una vista previa hasta que:
+
+1. Copies el ID de la base (`pnpm wrangler d1 info veterinaria-db`, después del primer deploy a `main`) y
+   lo agregues en `previews`:
+   `"d1_databases": [{ "binding": "DB", "database_name": "veterinaria-db", "database_id": "<ID>" }]`.
+2. Guardes el secreto para las vistas previas: `pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`.
 
 Opcional: si pones **Deploy command** `pnpm run publicar`, cada deploy aplica también las migraciones.
 
@@ -50,7 +55,7 @@ Se publica solo con cada push a `main` (paso 1). Para publicar desde tu computad
 pnpm run deploy
 ```
 
-La dirección queda tipo `https://veterinaria.<tu-cuenta>.workers.dev`.
+La dirección queda tipo `https://web-veterinaria.<tu-cuenta>.workers.dev`.
 
 ## 4. Ubicación geográfica: solo México
 
