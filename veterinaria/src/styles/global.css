@@ -872,14 +872,14 @@ img {
 
 /* En las tarjetas de la orilla derecha no cabe si la pantalla no es muy ancha: sale hacia la izquierda */
 @media (max-width: 100em) {
-  .vet-org-area:last-child .vet-org-contact,
+  .vet-org-area-3 .vet-org-contact,
   .vet-org-side-right .vet-org-contact {
     left: auto;
     right: 100%;
     padding: 0.5rem 0.5rem 0.5rem 0.75rem;
   }
 
-  .vet-org-area:last-child .vet-org-contact > div,
+  .vet-org-area-3 .vet-org-contact > div,
   .vet-org-side-right .vet-org-contact > div {
     transform: translateX(calc(100% + 0.5rem));
   }
@@ -897,6 +897,23 @@ img {
   transform: none;
 }
 
+/* Escritorio: cuadrícula de 6 columnas.
+   Fila 1: dirección. Fila 2: rama izquierda (columnas 1-3) y tarjeta derecha (4-6).
+   Fila 3: las tres áreas (2 columnas cada una).
+   Las columnas izquierda/derecha del HTML (usadas en celular) aquí no forman caja. */
+.vet-org {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.vet-org-col {
+  display: contents;
+}
+
+.vet-org-root {
+  grid-column: 1 / -1;
+}
+
 /* Ancho de cada rama (jefe + subordinados) y de la tarjeta principal */
 .vet-org-root,
 .vet-org-branch {
@@ -905,14 +922,13 @@ img {
 }
 
 /* Línea central: baja desde la tarjeta principal hasta la barra de las áreas */
-.vet-org-staff {
+.vet-org-trunk {
   position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  padding-bottom: 2rem;
+  grid-row: 2;
+  grid-column: 1 / -1;
 }
 
-.vet-org-staff::before {
+.vet-org-trunk::before {
   content: '';
   position: absolute;
   top: 0;
@@ -926,7 +942,9 @@ img {
 /* Rama izquierda y tarjeta derecha: cada una se une a la línea central con un tramo horizontal */
 .vet-org-side {
   position: relative;
+  grid-row: 2;
   padding-top: 1.5rem;
+  padding-bottom: 2rem;
 }
 
 .vet-org-side::before {
@@ -939,6 +957,7 @@ img {
 }
 
 .vet-org-side-left {
+  grid-column: 1 / 4;
   padding-right: 2.5rem;
 }
 
@@ -952,6 +971,7 @@ img {
 
 /* La tarjeta derecha va más abajo que la rama izquierda */
 .vet-org-side-right {
+  grid-column: 4 / 7;
   padding-top: 9rem;
   padding-left: 2.5rem;
 }
@@ -966,14 +986,22 @@ img {
 }
 
 /* Las tres áreas de abajo */
-.vet-org-areas {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
 .vet-org-area {
   position: relative;
+  grid-row: 3;
   padding: 1.5rem 0.5rem 0;
+}
+
+.vet-org-area-1 {
+  grid-column: 1 / 3;
+}
+
+.vet-org-area-2 {
+  grid-column: 3 / 5;
+}
+
+.vet-org-area-3 {
+  grid-column: 5 / 7;
 }
 
 /* Bajada de la barra a cada área */
@@ -999,11 +1027,11 @@ img {
   background-color: #0f766e;
 }
 
-.vet-org-area:first-child::after {
+.vet-org-area-1::after {
   left: 50%;
 }
 
-.vet-org-area:last-child::after {
+.vet-org-area-3::after {
   right: 50%;
 }
 
@@ -1280,57 +1308,259 @@ img {
     grid-column: auto;
   }
 
-  /* Organigrama: todo en una sola columna, sin la línea central */
-  .vet-org-staff,
-  .vet-org-areas {
-    grid-template-columns: 1fr;
+  /* ===== Organigrama en celular =====
+     Línea central con las ramas a los dos lados (izquierda, derecha, izquierda...).
+     Cada rama se une a la línea central y sus subordinados cuelgan de una línea
+     por el lado de afuera. */
+  .vet-org {
+    position: relative;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    column-gap: 2.5rem;
+    row-gap: 1.5rem;
   }
 
-  .vet-org-staff {
-    padding-bottom: 0;
+
+  /* Dos columnas reales: cada rama va debajo de la anterior de su lado, sin huecos */
+  .vet-org-col {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
   }
 
-  .vet-org-staff::before,
+  /* La columna derecha empieza un poco más abajo, para que queden escalonadas */
+  .vet-org-col-right {
+    margin-top: 4rem;
+  }
+
+  .vet-org-trunk,
   .vet-org-side::before,
   .vet-org-area::before,
   .vet-org-area::after {
     display: none;
   }
 
-  .vet-org-side,
-  .vet-org-area {
-    padding: 1.5rem 0 0;
-  }
-
-  /* El subdirector queda justo debajo de la dirección */
-  .vet-org-side-right {
-    order: -1;
-  }
-
-  .vet-org-root,
-  .vet-org-branch,
-  .vet-org-side .vet-org-branch {
-    max-width: 16rem;
+  .vet-org-root {
+    position: relative;
+    z-index: 1; /* tapa el inicio de la línea central */
+    grid-column: 1 / -1;
+    width: calc(50% - 1.25rem);
+    max-width: none;
     margin: 0 auto;
   }
 
-  /* En celular no hay espacio a los lados: el contacto sale debajo de la tarjeta */
+  .vet-org-side,
+  .vet-org-area {
+    padding: 0;
+  }
+
+  .vet-org-branch,
+  .vet-org-side .vet-org-branch {
+    position: relative;
+    max-width: none;
+    margin: 0;
+  }
+
+  /* Espacio por fuera para la línea de los subordinados */
+  .vet-org-col-left .vet-org-branch {
+    padding-left: 1rem;
+  }
+
+  .vet-org-col-right .vet-org-branch {
+    padding-right: 1rem;
+  }
+
+  /* Tramo de la rama a la línea central */
+  .vet-org-branch::after {
+    content: '';
+    position: absolute;
+    top: 4rem;
+    width: 1.25rem;
+    height: 0.125rem;
+    background-color: #0f766e;
+  }
+
+  .vet-org-col-left .vet-org-branch::after {
+    right: -1.25rem;
+  }
+
+  .vet-org-col-right .vet-org-branch::after {
+    left: -1.25rem;
+  }
+
+  /* Línea central: la dibuja cada rama en su tramo (desde la de arriba hasta su unión),
+     así termina en la última rama y no sigue de largo */
+  .vet-org-branch::before {
+    content: '';
+    position: absolute;
+    top: -1.5rem; /* cubre el espacio con la rama de arriba */
+    bottom: 0;
+    width: 0.125rem;
+    background-color: #0f766e;
+  }
+
+  .vet-org-col-left .vet-org-branch::before {
+    right: calc(-1.25rem - 0.0625rem);
+  }
+
+  .vet-org-col-right .vet-org-branch::before {
+    left: calc(-1.25rem - 0.0625rem);
+  }
+
+  /* La primera de la derecha empieza más abajo: su tramo sube hasta la dirección */
+  .vet-org-col-right > :first-child .vet-org-branch::before {
+    top: -5.5rem;
+  }
+
+  /* La última de cada columna: el tramo termina en su unión */
+  .vet-org-col > :last-child .vet-org-branch::before {
+    bottom: auto;
+    height: calc(1.5rem + 4rem + 0.125rem);
+  }
+
+  .vet-org-col-right > :first-child:last-child .vet-org-branch::before {
+    height: calc(5.5rem + 4rem + 0.125rem);
+  }
+
+  /* Tarjeta: foto cuadrada arriba, nombre y una pestaña con el puesto debajo */
+  .vet-org-node {
+    border: none;
+    background: none;
+    box-shadow: none;
+  }
+
+  .vet-org-body {
+    padding: 0 0 0.5rem;
+    border: 0.125rem solid #0f766e;
+    border-radius: 0.75rem;
+    background-color: white;
+    overflow: hidden;
+  }
+
+  .vet-org-photo {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    margin: 0 0 0.5rem;
+    border-radius: 0;
+    border-bottom: 0.125rem solid #0f766e;
+    font-size: 3rem;
+  }
+
+  .vet-org-node strong {
+    padding: 0 0.375rem;
+    font-size: 0.875rem;
+  }
+
+  .vet-org-role {
+    width: 85%;
+    margin: 0 auto;
+    font-size: 0.75rem;
+  }
+
+  /* Subordinados: un poco más angostos, pegados al lado de la línea central */
+  .vet-org .vet-org-subs {
+    margin-left: 0.5rem;
+  }
+
+  .vet-org-col-right .vet-org-subs {
+    margin-left: 0;
+    margin-right: 0.5rem;
+  }
+
+  /* Línea de los subordinados: baja por fuera desde la mitad del jefe */
+  .vet-org-branch:has(.vet-org-subs) > .vet-org-node::before,
+  .vet-org-branch:has(.vet-org-subs) > .vet-org-node::after {
+    content: '';
+    position: absolute;
+    left: -1rem;
+    background-color: #0f766e;
+  }
+
+  .vet-org-branch:has(.vet-org-subs) > .vet-org-node::before {
+    top: 50%;
+    width: 1rem;
+    height: 0.125rem;
+  }
+
+  .vet-org-branch:has(.vet-org-subs) > .vet-org-node::after {
+    top: 50%;
+    bottom: 0;
+    width: 0.125rem;
+  }
+
+  .vet-org-subs .vet-org-node::before {
+    left: -1.5rem;
+    width: 1.5rem;
+  }
+
+  .vet-org-subs .vet-org-node::after {
+    left: -1.5rem;
+    top: -1rem;
+    bottom: 0;
+  }
+
+  .vet-org-subs .vet-org-node:last-child::after {
+    bottom: calc(50% - 0.125rem);
+  }
+
+  /* Columna derecha: las mismas líneas, del lado derecho */
+  .vet-org-col-right .vet-org-branch > .vet-org-node::before,
+  .vet-org-col-right .vet-org-branch > .vet-org-node::after {
+    left: auto;
+    right: -1rem;
+  }
+
+  .vet-org-col-right .vet-org-subs .vet-org-node::before,
+  .vet-org-col-right .vet-org-subs .vet-org-node::after {
+    left: auto;
+    right: -1.5rem;
+  }
+
+  /* En celular el contacto aparece encima de la foto, con efecto de cristal (borroso y transparente) */
   .vet-org .vet-org-node .vet-org-contact {
-    top: 100%;
-    left: 50%;
-    right: auto;
-    padding: 0.5rem;
-    transform: translateX(-50%);
-  }
-
-  .vet-org .vet-org-node .vet-org-contact > div {
-    transform: translateY(calc(-100% - 0.5rem));
-  }
-
-  .vet-org .vet-org-node:hover .vet-org-contact > div,
-  .vet-org .vet-org-node:focus .vet-org-contact > div,
-  .vet-org .vet-org-node:focus-within .vet-org-contact > div {
+    top: 0.125rem; /* dentro del borde de la tarjeta */
+    left: 0.125rem;
+    right: 0.125rem;
+    width: auto;
+    max-width: none;
+    aspect-ratio: 1; /* mismo tamaño que la foto */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.375rem;
+    border-radius: 0.625rem 0.625rem 0 0;
+    /* cristal: 60% blanco, así el texto oscuro se lee aunque la foto sea muy oscura */
+    background-color: rgba(255, 255, 255, 0.6);
+    -webkit-backdrop-filter: blur(0.75rem);
+    backdrop-filter: blur(0.75rem);
     transform: none;
+    opacity: 0;
+    transition: opacity 0.3s ease, visibility 0.3s;
+  }
+
+  .vet-org .vet-org-node:hover .vet-org-contact,
+  .vet-org .vet-org-node:focus .vet-org-contact,
+  .vet-org .vet-org-node:focus-within .vet-org-contact {
+    opacity: 1;
+  }
+
+  /* Sin recuadro: el texto va directo sobre el cristal */
+  .vet-org .vet-org-node .vet-org-contact > div {
+    gap: 0.375rem;
+    padding: 0;
+    background: none;
+    box-shadow: none;
+    text-align: center;
+    transform: none;
+  }
+
+  .vet-org .vet-org-node .vet-org-contact a {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.3;
+    color: #111827;
+    text-shadow: 0 0 0.25rem rgba(255, 255, 255, 0.9);
   }
 
   .vet-menu-logo {
@@ -1339,4 +1569,376 @@ img {
     height: auto;
     margin-top: 1.5rem;
   }
+}
+
+/* ===== Sistema interno (login, perfil, inventario, usuarios) ===== */
+.sis-login {
+  max-width: 24rem;
+  margin: 0 auto;
+  padding: clamp(1.5rem, 4vw, 2.5rem);
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.06);
+}
+
+.sis-login h1,
+.sis-titulo {
+  color: #1f2937;
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.5rem, 3vw + 0.5rem, 2rem);
+}
+
+.sis-muted {
+  color: #6b7280;
+}
+
+.sis-barra {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.sis-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sis-tabs a {
+  padding: 0.5em 1em;
+  border-radius: 999px;
+  text-decoration: none;
+  color: #374151;
+  font-weight: 600;
+  background: white;
+  border: 1px solid #d1d5db;
+}
+
+.sis-tabs a[aria-current='page'] {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: white;
+}
+
+.sis-sesion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  color: #4b5563;
+}
+
+.sis-sesion form {
+  margin: 0;
+}
+
+.sis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.sis-card {
+  background: white;
+  border-radius: 1rem;
+  padding: clamp(1rem, 3vw, 1.5rem);
+  box-shadow: 0 0.125rem 0.5rem rgba(0, 0, 0, 0.05);
+  margin-bottom: 1.25rem;
+}
+
+.sis-grid > .sis-card {
+  margin-bottom: 0;
+}
+
+.sis-card h2 {
+  font-size: 1.25rem;
+  color: #1f2937;
+  margin: 0 0 1rem;
+}
+
+.sis-card h3 {
+  font-size: 1rem;
+  color: #1f2937;
+  margin: 1.25rem 0 0.5rem;
+}
+
+/* Formularios */
+.sis-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: stretch;
+}
+
+.sis-form > button {
+  align-self: flex-start;
+}
+
+.sis-form label,
+.sis-filtros label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 600;
+  color: #374151;
+  font-size: 0.9375rem;
+}
+
+.sis-form input:not([type='radio']):not([type='checkbox']),
+.sis-form select,
+.sis-form textarea,
+.sis-filtros input[type='search'],
+.sis-filtros select,
+.sis-inline select {
+  font: inherit;
+  font-weight: normal;
+  padding: 0.5em 0.75em;
+  border: 1px solid #9ca3af;
+  border-radius: 0.5rem;
+  background: white;
+  color: #1f2937;
+  min-width: 0;
+}
+
+.sis-form :focus-visible,
+.sis-filtros :focus-visible,
+.sis-inline :focus-visible {
+  outline: 3px solid #0f766e;
+  outline-offset: 1px;
+}
+
+.sis-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 1rem;
+}
+
+@media (min-width: 48em) {
+  .sis-span-2 {
+    grid-column: span 2;
+  }
+
+  .sis-span-3 {
+    grid-column: 1 / -1;
+  }
+}
+
+.sis-radios {
+  display: flex;
+  gap: 1.5rem;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.sis-radios legend {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 0.25rem;
+}
+
+.sis-form .sis-radios label,
+.sis-filtros .sis-check {
+  flex-direction: row;
+  align-items: center;
+  font-weight: normal;
+}
+
+.sis-btn-sec {
+  font: inherit;
+  font-weight: 600;
+  padding: 0.45em 1em;
+  border-radius: 999px;
+  border: 1px solid #0f766e;
+  background: white;
+  color: #0f766e;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.sis-btn-sec:hover {
+  background: #f0fdfa;
+}
+
+.sis-btn-link {
+  text-decoration: none;
+  display: inline-block;
+}
+
+/* Barra de filtros del inventario */
+.sis-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sis-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.sis-inline {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+/* Tablas: se desplazan de lado en celular en vez de romper la página */
+.sis-tabla-wrap {
+  overflow-x: auto;
+}
+
+.sis-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 0.9375rem;
+}
+
+.sis-tabla caption {
+  text-align: left;
+  padding-bottom: 0.5rem;
+}
+
+.sis-tabla th,
+.sis-tabla td {
+  text-align: left;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid #e5e7eb;
+  vertical-align: middle;
+}
+
+.sis-tabla th {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.sis-tabla a {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.sis-inactivo td {
+  color: #6b7280;
+}
+
+/* Etiquetas de estado (colores con contraste AA) */
+.sis-badge {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1em 0.6em;
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.sis-badge-alerta {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sis-badge-aviso {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.sis-badge-ok {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.sis-alerta {
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+}
+
+.sis-alerta-error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.sis-alerta-ok {
+  background: #ccfbf1;
+  color: #115e59;
+}
+
+.sis-datos {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.4rem 1rem;
+  margin: 0;
+}
+
+.sis-datos dt {
+  font-weight: 600;
+  color: #374151;
+}
+
+.sis-datos dd {
+  margin: 0;
+}
+
+.sis-stock {
+  font-size: 2.5rem;
+  font-weight: bold;
+  color: #1f2937;
+  margin: 0 0 1rem;
+}
+
+.sis-stock span:first-child {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: normal;
+}
+
+.sis-avisos {
+  padding-left: 1.25rem;
+  margin: 0;
+}
+
+.sis-avisos li {
+  margin-bottom: 0.5rem;
+}
+
+.sis-avisos a {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+/* Ficha del proveedor: etiqueta a la izquierda, dato a la derecha */
+.sis-tabla-ficha th {
+  width: 12rem;
+  white-space: nowrap;
+}
+
+/* Tabla de todos los proveedores: los datos no se parten en varias líneas */
+.sis-tabla-proveedores th,
+.sis-tabla-proveedores td {
+  white-space: nowrap;
+}
+
+.sis-tabla-proveedores tbody th {
+  background: white;
+  color: #1f2937;
+}
+
+/* Proveedor al que se le dio clic desde el inventario */
+.sis-tabla-proveedores tr.sis-fila-activa > * {
+  background: #ccfbf1;
+}
+
+.sis-tabla-proveedores tr.sis-fila-activa > th {
+  box-shadow: inset 4px 0 0 #0f766e;
 }

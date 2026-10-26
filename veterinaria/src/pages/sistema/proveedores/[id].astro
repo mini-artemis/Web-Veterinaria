@@ -1,0 +1,67 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import { puede } from '../../../lib/auth';
+import { camposProveedor, type Proveedor } from '../../../lib/proveedores';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso para ver proveedores.', { status: 403 });
+
+const id = Number(Astro.params.id);
+const [proveedores, productos] = await env.DB.batch([
+  env.DB.prepare('SELECT * FROM proveedores WHERE id = ?').bind(id),
+  env.DB.prepare('SELECT id, codigo, nombre, stock, unidad FROM productos WHERE proveedor_id = ? AND activo = 1 ORDER BY nombre').bind(id),
+]);
+const proveedor = proveedores.results[0] as Proveedor | undefined;
+if (!proveedor) return new Response('Proveedor no encontrado.', { status: 404 });
+const surtidos = productos.results as { id: number; codigo: string; nombre: string; stock: number; unidad: string }[];
+---
+
+<SistemaLayout title={proveedor.nombre ?? 'Proveedor'}>
+  <p><a href="/sistema/proveedores">← Todos los proveedores</a> · <a href="/sistema/inventario">Inventario</a></p>
+
+  <div class="sis-card">
+    <h2>Datos del proveedor</h2>
+    <div class="sis-tabla-wrap">
+      <table class="sis-tabla sis-tabla-ficha">
+        <tbody>
+          {camposProveedor.map(({ campo, etiqueta }) => {
+            const valor = proveedor[campo];
+            return (
+              <tr>
+                <th scope="row">{etiqueta}</th>
+                <td>
+                  {!valor ? '—'
+                    : campo === 'telefono' ? <a href={`tel:${valor.replace(/\s/g, '')}`}>{valor}</a>
+                    : campo === 'correo' ? <a href={`mailto:${valor}`}>{valor}</a>
+                    : valor}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="sis-card">
+    <h2>Productos que surte</h2>
+    <div class="sis-tabla-wrap">
+      <table class="sis-tabla">
+        <thead><tr><th scope="col">Código</th><th scope="col">Producto</th><th scope="col">Stock</th></tr></thead>
+        <tbody>
+          {surtidos.map((p) => (
+            <tr>
+              <td>{p.codigo}</td>
+              <td><a href={`/sistema/inventario/${p.id}`}>{p.nombre}</a></td>
+              <td>{p.stock} {p.unidad}</td>
+            </tr>
+          ))}
+          {surtidos.length === 0 && <tr><td colspan="3" class="sis-muted">No surte productos activos.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</SistemaLayout>

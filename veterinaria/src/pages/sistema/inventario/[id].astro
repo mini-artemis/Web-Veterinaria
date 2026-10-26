@@ -1,0 +1,167 @@
+---
+import { env } from 'cloudflare:workers';
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import ProductoForm from '../../../components/ProductoForm.astro';
+import { puede } from '../../../lib/auth';
+import { entero, fechaHora, pesos, texto, textoONulo } from '../../../lib/forms';
+import { catalogos, leerProducto, mensajeDeError } from '../../../lib/productos';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso para ver el inventario.', { status: 403 });
+
+const id = Number(Astro.params.id);
+let mensaje = '';
+let error = '';
+
+if (Astro.request.method === 'POST') {
+  const datos = await Astro.request.formData();
+  const accion = texto(datos, 'accion');
+
+  if (accion === 'movimiento' && puede(usuario, 'inventario.movimiento')) {
+    const tipo = texto(datos, 'tipo') === 'salida' ? 'salida' : 'entrada';
+    const cantidad = entero(datos, 'cantidad');
+    if (!(cantidad > 0)) error = 'La cantidad debe ser un número entero mayor que 0.';
+    else {
+      // Las dos operaciones van juntas (batch = transacción): si una falla, no se guarda ninguna.
+      // Si la salida deja el stock en negativo, la restricción CHECK (stock >= 0) la rechaza.
+      try {
+        await env.DB.batch([
+          env.DB.prepare("UPDATE productos SET stock = stock + ?, actualizado_en = datetime('now') WHERE id = ?")
+            .bind(tipo === 'entrada' ? cantidad : -cantidad, id),
+          env.DB.prepare('INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES (?, ?, ?, ?, ?)')
+            .bind(id, usuario.id, tipo, cantidad, textoONulo(datos, 'motivo')),
+        ]);
+        mensaje = `${tipo === 'entrada' ? 'Entrada' : 'Salida'} de ${cantidad} registrada.`;
+      } catch {
+        error = 'No hay suficiente stock para esa salida.';
+      }
+    }
+  } else if (accion === 'editar' && puede(usuario, 'inventario.editar')) {
+    const leido = leerProducto(datos);
+    if (leido.error) error = leido.error;
+    else {
+      const p = leido.producto!;
+      try {
+        await env.DB.prepare(
+          `UPDATE productos SET codigo = ?, nombre = ?, descripcion = ?, categoria_id = ?, proveedor_id = ?, unidad = ?,
+                  precio_compra = ?, precio_venta = ?, stock_minimo = ?, lote = ?, fecha_caducidad = ?, actualizado_en = datetime('now')
+            WHERE id = ?`,
+        )
+          .bind(p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
+                p.stock_minimo, p.lote, p.fecha_caducidad, id)
+          .run();
+        mensaje = 'Producto actualizado.';
+      } catch (e) {
+        error = mensajeDeError(e);
+      }
+    }
+  } else if (accion === 'estado' && puede(usuario, 'inventario.editar')) {
+    // "Dar de baja" en lugar de borrar: así no se pierde el historial de movimientos
+    await env.DB.prepare("UPDATE productos SET activo = 1 - activo, actualizado_en = datetime('now') WHERE id = ?").bind(id).run();
+    mensaje = 'Estado del producto actualizado.';
+  } else {
+    return new Response('No tienes permiso para esta acción.', { status: 403 });
+  }
+}
+
+const producto = await env.DB.prepare(
+  `SELECT p.*, c.nombre AS categoria, pr.nombre AS proveedor
+     FROM productos p JOIN categorias c ON c.id = p.categoria_id LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
+    WHERE p.id = ?`,
+)
+  .bind(id)
+  .first<Record<string, any>>();
+if (!producto) return new Response('Producto no encontrado.', { status: 404 });
+
+const { results: movimientos } = await env.DB.prepare(
+  `SELECT m.tipo, m.cantidad, m.motivo, m.fecha, u.nombre AS usuario
+     FROM movimientos m JOIN usuarios u ON u.id = m.usuario_id
+    WHERE m.producto_id = ? ORDER BY m.fecha DESC, m.id DESC LIMIT 50`,
+)
+  .bind(id)
+  .all<{ tipo: string; cantidad: number; motivo: string | null; fecha: string; usuario: string }>();
+
+const { categorias, proveedores } = puede(usuario, 'inventario.editar') ? await catalogos() : { categorias: [], proveedores: [] };
+---
+
+<SistemaLayout title={producto.nombre}>
+  <p><a href="/sistema/inventario">← Volver al inventario</a></p>
+  {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
+  {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+  {producto.activo === 0 && <p class="sis-alerta sis-alerta-error">Este producto está dado de baja.</p>}
+
+  <div class="sis-grid">
+    <div class="sis-card">
+      <h2>Existencias</h2>
+      <p class="sis-stock">
+        {producto.stock} <span>{producto.unidad}</span>
+        {producto.stock <= producto.stock_minimo && <span class="sis-badge sis-badge-alerta">Bajo el mínimo ({producto.stock_minimo})</span>}
+      </p>
+      <dl class="sis-datos">
+        <dt>Código</dt><dd>{producto.codigo}</dd>
+        <dt>Categoría</dt><dd>{producto.categoria}</dd>
+        <dt>Proveedor</dt><dd>{producto.proveedor_id ? <a href={`/sistema/proveedores?id=${producto.proveedor_id}`}>{producto.proveedor}</a> : '—'}</dd>
+        <dt>Precio de venta</dt><dd>{pesos(producto.precio_venta)}</dd>
+        <dt>Lote</dt><dd>{producto.lote ?? '—'}</dd>
+        <dt>Caducidad</dt><dd>{producto.fecha_caducidad ?? '—'}</dd>
+      </dl>
+    </div>
+
+    {
+      puede(usuario, 'inventario.movimiento') && producto.activo === 1 && (
+        <form method="post" class="sis-card sis-form">
+          <h2>Registrar movimiento</h2>
+          <input type="hidden" name="accion" value="movimiento" />
+          <fieldset class="sis-radios">
+            <legend>Tipo</legend>
+            <label><input type="radio" name="tipo" value="entrada" checked /> Entrada</label>
+            <label><input type="radio" name="tipo" value="salida" /> Salida</label>
+          </fieldset>
+          <label>Cantidad <input type="number" name="cantidad" min="1" step="1" required /></label>
+          <label>Motivo <input name="motivo" maxlength="100" placeholder="Compra, consulta, venta, caducado..." /></label>
+          <button type="submit" class="vet-btn-primary">Registrar</button>
+        </form>
+      )
+    }
+  </div>
+
+  <div class="sis-card">
+    <h2>Historial de movimientos</h2>
+    <div class="sis-tabla-wrap">
+      <table class="sis-tabla">
+        <thead><tr><th scope="col">Fecha</th><th scope="col">Tipo</th><th scope="col">Cantidad</th><th scope="col">Motivo</th><th scope="col">Registró</th></tr></thead>
+        <tbody>
+          {movimientos.map((m) => (
+            <tr>
+              <td>{fechaHora(m.fecha)}</td>
+              <td><span class:list={['sis-badge', m.tipo === 'entrada' ? 'sis-badge-ok' : 'sis-badge-aviso']}>{m.tipo}</span></td>
+              <td>{m.tipo === 'entrada' ? '+' : '−'}{m.cantidad}</td>
+              <td>{m.motivo ?? '—'}</td>
+              <td>{m.usuario}</td>
+            </tr>
+          ))}
+          {movimientos.length === 0 && <tr><td colspan="5" class="sis-muted">Sin movimientos todavía.</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {
+    puede(usuario, 'inventario.editar') && (
+      <>
+        <form method="post" class="sis-card sis-form">
+          <h2>Editar producto</h2>
+          <input type="hidden" name="accion" value="editar" />
+          <ProductoForm categorias={categorias} proveedores={proveedores} producto={producto} />
+          <button type="submit" class="vet-btn-primary">Guardar cambios</button>
+        </form>
+        <form method="post" class="sis-card">
+          <input type="hidden" name="accion" value="estado" />
+          <button type="submit" class="sis-btn-sec">{producto.activo === 1 ? 'Dar de baja' : 'Reactivar'} producto</button>
+        </form>
+      </>
+    )
+  }
+</SistemaLayout>

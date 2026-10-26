@@ -1,0 +1,3 @@
+# Copia este archivo como .dev.vars para desarrollo local.
+# Llave secreta de PRUEBA de Turnstile (siempre aprueba).
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
