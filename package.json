@@ -11,6 +11,7 @@
     "astro": "astro",
     "db:migrar": "wrangler d1 migrations apply veterinaria-db --local",
     "db:migrar:remoto": "wrangler d1 migrations apply veterinaria-db --remote",
+    "postinstall": "node scripts/build-cloudflare.mjs",
     "crear-admin": "node scripts/crear-admin.mjs",
     "deploy": "astro build && pnpm run publicar",
     "publicar": "wrangler deploy && wrangler d1 migrations apply veterinaria-db --remote"

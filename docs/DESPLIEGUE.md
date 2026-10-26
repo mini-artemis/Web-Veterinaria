@@ -5,24 +5,26 @@ Corresponde a la rama del pizarrón **Cloudflare (bots) → Ubicación geo (Mex)
 ## 1. Conectar el repositorio (Workers Builds)
 
 En el panel de Cloudflare: **Workers & Pages → Create → Import a repository** y elige este repositorio.
-Después, en **Settings → Build** del Worker `veterinaria`:
+No hace falta cambiar nada en **Settings → Build**: con los comandos que Cloudflare pone por defecto
+(`npx wrangler deploy` en `main` y `npx wrangler preview` en las demás ramas) ya funciona, porque al
+instalar las dependencias [`scripts/build-cloudflare.mjs`](../scripts/build-cloudflare.mjs) compila el
+sitio (solo en Cloudflare, donde existe `WORKERS_CI`).
 
-| Campo | Valor |
-|---|---|
-| Root directory | `veterinaria` |
-| Build command | `pnpm build` |
-| Deploy command | `pnpm run publicar` |
-| Builds for non-production branches → Non-production branch deploy command | `pnpm wrangler versions upload` |
+Cada push a `main` compila y publica el sitio. El primer `wrangler deploy` crea la base D1
+`veterinaria-db`. Las migraciones de `migrations/` se aplican desde tu computadora.
 
-Cada push a `main` compila y publica el sitio. `pnpm run publicar` hace `wrangler deploy` (que crea la
-base D1 `veterinaria-db` la primera vez) y luego aplica las migraciones de `migrations/` a esa base.
-En las demás ramas (los PR) solo se sube una versión de prueba con su propia URL, sin publicarla;
-esa versión usa la misma base de datos que producción.
+Las vistas previas de los PR (`wrangler preview`) usan la misma base de datos, pero sus secretos van
+aparte: para probar el login en un PR, agrega `TURNSTILE_SECRET_KEY` también con
+`pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`.
 
-Cuando termine el primer deploy, crea tu administrador desde tu computadora:
+Opcional: si pones **Deploy command** `pnpm run publicar`, cada deploy aplica también las migraciones.
+
+Cuando termine el primer deploy, crea las tablas y tu administrador desde tu computadora
+(repite `pnpm db:migrar:remoto` cada vez que agregues un archivo a `migrations/`):
 
 ```bash
 pnpm wrangler login                                             # abre el navegador para entrar a tu cuenta
+pnpm db:migrar:remoto                                           # crea las tablas en Cloudflare
 pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
 ```
 
