@@ -26,7 +26,7 @@ pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 | `pnpm preview` | Prueba el build en el mismo motor que Cloudflare |
 | `pnpm db:migrar` / `pnpm db:migrar:remoto` | Aplica `migrations/` a la base local o a la de Cloudflare |
 | `pnpm crear-admin "Nombre" correo "contraseña" [--remote]` | Crea un administrador |
-| `pnpm deploy` | Compila y publica en Cloudflare |
+| `pnpm run deploy` | Compila y publica en Cloudflare (normalmente se publica solo con cada push a `main`) |
 
 ## Estructura
 

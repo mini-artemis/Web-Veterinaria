@@ -6,13 +6,12 @@
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
 
-  // Base de datos (Cloudflare D1, es SQLite). Al crearla con
-  // `pnpm wrangler d1 create veterinaria-db` copia aquí el database_id que te da.
+  // Base de datos (Cloudflare D1, es SQLite). No lleva database_id: el primer `wrangler deploy`
+  // la crea con este nombre y los siguientes (y los comandos `d1`) la encuentran por el nombre.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "veterinaria-db",
-      "database_id": "REEMPLAZAR-CON-EL-ID-DE-TU-BASE",
       "migrations_dir": "migrations"
     }
   ],

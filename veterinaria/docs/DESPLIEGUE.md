@@ -2,17 +2,24 @@
 
 Corresponde a la rama del pizarrón **Cloudflare (bots) → Ubicación geo (Mex) → Alto / Bajo / Medio**.
 
-## 1. Crear la cuenta y la base de datos
+## 1. Conectar el repositorio (Workers Builds)
+
+En el panel de Cloudflare: **Workers & Pages → Create → Import a repository** y elige este repositorio.
+Después, en **Settings → Build** del Worker `veterinaria`:
+
+| Campo | Valor |
+|---|---|
+| Root directory | `veterinaria` |
+| Build command | `pnpm build` |
+| Deploy command | `pnpm run publicar` |
+
+Cada push a `main` compila y publica el sitio. `pnpm run publicar` hace `wrangler deploy` (que crea la
+base D1 `veterinaria-db` la primera vez) y luego aplica las migraciones de `migrations/` a esa base.
+
+Cuando termine el primer deploy, crea tu administrador desde tu computadora:
 
 ```bash
-pnpm wrangler login                         # abre el navegador para entrar a tu cuenta de Cloudflare
-pnpm wrangler d1 create veterinaria-db      # te da un database_id
-```
-
-Copia el `database_id` en [`wrangler.jsonc`](../wrangler.jsonc) en lugar de `REEMPLAZAR-CON-EL-ID-DE-TU-BASE`.
-
-```bash
-pnpm db:migrar:remoto                                           # crea las tablas en Cloudflare
+pnpm wrangler login                                             # abre el navegador para entrar a tu cuenta
 pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
 ```
 
@@ -21,22 +28,24 @@ pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
 1. En el panel de Cloudflare entra a **Turnstile → Add widget**. Ponle un nombre, agrega tu dominio
    (o `*.workers.dev`) y elige el modo **Managed**.
 2. Copia la **Site Key** en `wrangler.jsonc`, en `vars.TURNSTILE_SITE_KEY`.
-3. Guarda la **Secret Key** como secreto (no se escribe en ningún archivo):
-
-   ```bash
-   pnpm wrangler secret put TURNSTILE_SECRET_KEY
-   ```
+3. Guarda la **Secret Key** como secreto (no se escribe en ningún archivo), en el panel del Worker:
+   **Settings → Variables and Secrets → Add → Secret**, con el nombre `TURNSTILE_SECRET_KEY`
+   (o desde tu computadora con `pnpm wrangler secret put TURNSTILE_SECRET_KEY`).
+   **Sin este secreto el login rechaza a todos.** Mientras no tengas tus llaves puedes usar la secreta de
+   prueba `1x0000000000000000000000000000000AA` (siempre aprueba, junto con la Site Key de prueba).
 
 En desarrollo se usan las llaves de prueba de Cloudflare, que siempre aprueban
 (la secreta está en `.dev.vars`).
 
 ## 3. Publicar
 
+Se publica solo con cada push a `main` (paso 1). Para publicar desde tu computadora sin hacer push:
+
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-Te da una dirección tipo `https://veterinaria.<tu-cuenta>.workers.dev`.
+La dirección queda tipo `https://veterinaria.<tu-cuenta>.workers.dev`.
 
 ## 4. Ubicación geográfica: solo México
 
