@@ -12,9 +12,12 @@ Después, en **Settings → Build** del Worker `veterinaria`:
 | Root directory | `veterinaria` |
 | Build command | `pnpm build` |
 | Deploy command | `pnpm run publicar` |
+| Builds for non-production branches → Non-production branch deploy command | `pnpm wrangler versions upload` |
 
 Cada push a `main` compila y publica el sitio. `pnpm run publicar` hace `wrangler deploy` (que crea la
 base D1 `veterinaria-db` la primera vez) y luego aplica las migraciones de `migrations/` a esa base.
+En las demás ramas (los PR) solo se sube una versión de prueba con su propia URL, sin publicarla;
+esa versión usa la misma base de datos que producción.
 
 Cuando termine el primer deploy, crea tu administrador desde tu computadora:
 
