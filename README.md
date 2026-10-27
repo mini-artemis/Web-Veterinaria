@@ -2,7 +2,8 @@
 
 Sitio hecho con [Astro](https://astro.build) y publicado en Cloudflare Workers. Las páginas públicas
 (Inicio, Nosotros) se generan como HTML estático; el **sistema interno con login** (`/login`, `/sistema`)
-se genera en el servidor y guarda sus datos en Cloudflare D1.
+se genera en el servidor y guarda sus datos en Cloudflare D1. El login (correo y contraseña) usa
+[Better Auth](https://www.better-auth.com).
 
 - Diseño de la base de datos: [`docs/DISENO-BD.md`](docs/DISENO-BD.md)
 - Publicar y configurar la seguridad en Cloudflare: [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)
@@ -11,9 +12,9 @@ se genera en el servidor y guarda sus datos en Cloudflare D1.
 
 ```bash
 pnpm install
-cp .dev.vars.example .dev.vars        # llaves de prueba de Turnstile
+cp .dev.vars.example .dev.vars        # llaves de prueba de Turnstile; pon tu BETTER_AUTH_SECRET
 pnpm db:migrar                        # crea las tablas en la base local
-pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña"
+pnpm crear-admin "Tu Nombre" tu@correo.com    # te pide la contraseña
 pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 ```
 
@@ -25,7 +26,7 @@ pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 | `pnpm build` | Genera el sitio en `dist/` |
 | `pnpm preview` | Prueba el build en el mismo motor que Cloudflare |
 | `pnpm db:migrar` / `pnpm db:migrar:remoto` | Aplica `migrations/` a la base local o a la de Cloudflare |
-| `pnpm crear-admin "Nombre" correo "contraseña" [--remote]` | Crea un administrador |
+| `pnpm crear-admin "Nombre" correo [--remote]` | Crea un administrador o le cambia la contraseña (la pide sin mostrarla) |
 | `pnpm run deploy` | Compila y publica en Cloudflare (normalmente se publica solo con cada push a `main`) |
 
 ## Estructura
@@ -35,8 +36,8 @@ pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 - `src/pages/nosotros.astro` — Nosotros (`/nosotros`)
 - `src/styles/global.css` — estilos
 - `src/assets/` — imágenes originales; Astro las convierte a WebP en varios tamaños con `<Image>`
-- `src/pages/login.astro`, `src/pages/logout.ts` — inicio y cierre de sesión (con Turnstile)
+- `src/pages/login.astro`, `src/pages/logout.ts` — inicio y cierre de sesión con Better Auth (y Turnstile)
 - `src/pages/sistema/` — Mi perfil, Inventario y Usuarios (requieren sesión)
 - `src/middleware.ts` — revisa la sesión y el país en las rutas del sistema
-- `src/lib/` — contraseñas y sesiones (`auth.ts`), Turnstile, utilidades de formularios
+- `src/lib/` — configuración de Better Auth (`auth.ts`), Turnstile, utilidades de formularios
 - `migrations/` — tablas y datos iniciales de la base de datos

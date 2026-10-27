@@ -1,13 +1,64 @@
 // Crea (o actualiza) un usuario administrador en la base de datos.
-// Uso:
-//   pnpm crear-admin "Nombre" correo@ejemplo.com "contraseña"            (base local)
-//   pnpm crear-admin "Nombre" correo@ejemplo.com "contraseña" --remote   (base en Cloudflare)
+// Uso (la contraseña se pide al ejecutarlo, sin mostrarla en pantalla):
+//   pnpm crear-admin "Nombre" correo@ejemplo.com            (base local)
+//   pnpm crear-admin "Nombre" correo@ejemplo.com --remote   (base en Cloudflare)
+// Se pide así porque en la terminal caracteres como $ ! ` \ cambian la contraseña sin avisar.
 import { execFileSync } from 'node:child_process';
 import { webcrypto as crypto } from 'node:crypto';
+import { createInterface } from 'node:readline/promises';
 
-const [nombre, correo, password, destino = '--local'] = process.argv.slice(2);
-if (!nombre || !correo || !password || password.length < 8) {
-  console.error('Uso: pnpm crear-admin "Nombre" correo@ejemplo.com "contraseña (mín. 8)" [--local|--remote]');
+const args = process.argv.slice(2);
+const destino = args.includes('--remote') ? '--remote' : '--local';
+const [nombre, correo, passwordArg] = args.filter((a) => a !== '--remote' && a !== '--local');
+if (!nombre || !correo) {
+  console.error('Uso: pnpm crear-admin "Nombre" correo@ejemplo.com [--local|--remote]');
+  process.exit(1);
+}
+
+let lineas;
+
+/** Lee una línea de la terminal sin mostrar lo que se escribe. */
+function preguntarOculto(pregunta) {
+  process.stdout.write(pregunta);
+  if (!process.stdin.isTTY) {
+    // Entrada redirigida (p. ej. `printf ... |`): no hay nada que ocultar. Se usa un solo lector
+    // para todas las preguntas, porque uno nuevo perdería las líneas que el anterior ya leyó.
+    lineas ??= createInterface({ input: process.stdin })[Symbol.asyncIterator]();
+    return lineas.next().then(({ value }) => (process.stdout.write('\n'), value ?? ''));
+  }
+  return new Promise((resolve) => {
+    let texto = '';
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.setEncoding('utf8');
+    const alTeclear = (teclas) => {
+      for (const c of teclas) {
+        if (c === '\r' || c === '\n') {
+          process.stdin.off('data', alTeclear);
+          process.stdin.setRawMode(false);
+          process.stdin.pause();
+          process.stdout.write('\n');
+          return resolve(texto);
+        }
+        if (c === '\u0003') process.exit(130); // Ctrl+C
+        if (c === '\u007f' || c === '\b') texto = texto.slice(0, -1); // Borrar
+        else texto += c;
+      }
+    };
+    process.stdin.on('data', alTeclear);
+  });
+}
+
+let password = passwordArg;
+if (!password) {
+  password = await preguntarOculto('Contraseña (mín. 8): ');
+  if (password !== (await preguntarOculto('Repítela: '))) {
+    console.error('Las contraseñas no coinciden.');
+    process.exit(1);
+  }
+}
+if (password.length < 8) {
+  console.error('La contraseña debe tener al menos 8 caracteres.');
   process.exit(1);
 }
 
@@ -20,8 +71,12 @@ const b64 = (bytes) => Buffer.from(bytes).toString('base64');
 const hash = `pbkdf2$${ITERACIONES}$${b64(sal)}$${b64(bits)}`;
 
 const sql = (texto) => `'${texto.replaceAll("'", "''")}'`;
-const consulta = `INSERT INTO usuarios (nombre, correo, password_hash, rol_id) VALUES (${sql(nombre)}, ${sql(correo.toLowerCase())}, ${sql(hash)}, 1)
-  ON CONFLICT(correo) DO UPDATE SET nombre = excluded.nombre, password_hash = excluded.password_hash, rol_id = 1, activo = 1;`;
+// La contraseña va en la tabla cuentas, que es donde la busca Better Auth
+const consulta = `INSERT INTO usuarios (nombre, correo, rol_id, actualizado_en) VALUES (${sql(nombre)}, ${sql(correo.toLowerCase())}, 1, datetime('now'))
+  ON CONFLICT(correo) DO UPDATE SET nombre = excluded.nombre, rol_id = 1, activo = 1, actualizado_en = excluded.actualizado_en;
+INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash)
+  SELECT id, 'credential', id, ${sql(hash)} FROM usuarios WHERE correo = ${sql(correo.toLowerCase())}
+  ON CONFLICT(usuario_id, proveedor) DO UPDATE SET password_hash = excluded.password_hash, actualizado_en = datetime('now');`;
 
 execFileSync('pnpm', ['wrangler', 'd1', 'execute', 'veterinaria-db', destino, '--command', consulta], { stdio: 'inherit' });
-console.log(`\nAdministrador listo: ${correo}`);
+console.log(`\nAdministrador listo: ${correo} (${destino === '--remote' ? 'Cloudflare' : 'local'})`);

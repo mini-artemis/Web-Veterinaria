@@ -20,7 +20,8 @@ variables, así que Inicio y Nosotros se ven, pero el login no funciona en una v
 1. Copies el ID de la base (`pnpm wrangler d1 info veterinaria-db`, después del primer deploy a `main`) y
    lo agregues en `previews`:
    `"d1_databases": [{ "binding": "DB", "database_name": "veterinaria-db", "database_id": "<ID>" }]`.
-2. Guardes el secreto para las vistas previas: `pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`.
+2. Guardes los secretos para las vistas previas: `pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`
+   y `pnpm wrangler preview secret put BETTER_AUTH_SECRET`.
 
 Opcional: si pones **Deploy command** `pnpm run publicar`, cada deploy aplica también las migraciones.
 
@@ -29,8 +30,9 @@ Cuando termine el primer deploy, crea las tablas y tu administrador desde tu com
 
 ```bash
 pnpm wrangler login                                             # abre el navegador para entrar a tu cuenta
+openssl rand -base64 32 | pnpm wrangler secret put BETTER_AUTH_SECRET   # llave de las cookies de sesión
 pnpm db:migrar:remoto                                           # crea las tablas en Cloudflare
-pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
+pnpm crear-admin "Tu Nombre" tu@correo.com --remote                  # te pide la contraseña
 ```
 
 ## 2. Turnstile (bloquear bots en el login)

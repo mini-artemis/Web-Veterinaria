@@ -4,6 +4,8 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "web-veterinaria",
   "compatibility_date": "2026-10-01",
+  // Better Auth usa AsyncLocalStorage (node:async_hooks)
+  "compatibility_flags": ["nodejs_compat"],
   "observability": { "enabled": true },
 
   // Base de datos (Cloudflare D1, es SQLite). No lleva database_id: el primer `wrangler deploy`

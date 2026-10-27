@@ -25,9 +25,17 @@ if (Astro.request.method === 'POST') {
     else if (password.length < 8) error = 'La contraseña debe tener al menos 8 caracteres.';
     else {
       try {
-        await env.DB.prepare('INSERT INTO usuarios (nombre, correo, password_hash, rol_id) VALUES (?, ?, ?, ?)')
-          .bind(nombre, correo, await hashPassword(password), entero(datos, 'rol_id'))
-          .run();
+        // El usuario y su contraseña (tabla cuentas, como la lee Better Auth) se guardan juntos
+        await env.DB.batch([
+          env.DB.prepare("INSERT INTO usuarios (nombre, correo, rol_id, actualizado_en) VALUES (?, ?, ?, datetime('now'))").bind(
+            nombre,
+            correo,
+            entero(datos, 'rol_id'),
+          ),
+          env.DB.prepare(
+            "INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash) SELECT id, 'credential', id, ? FROM usuarios WHERE correo = ?",
+          ).bind(await hashPassword(password), correo),
+        ]);
         mensaje = `Usuario ${correo} creado.`;
       } catch (e) {
         error = String(e).includes('UNIQUE') ? 'Ya existe un usuario con ese correo.' : 'No se pudo crear el usuario.';

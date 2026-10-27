@@ -1,7 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import Layout from '../layouts/Layout.astro';
-import { crearSesion, verificarPassword } from '../lib/auth';
+import { getAuth, redirigirConCookies } from '../lib/auth';
 import { verificarTurnstile } from '../lib/turnstile';
 
 export const prerender = false;
@@ -20,15 +20,18 @@ if (Astro.request.method === 'POST') {
   if (!(await verificarTurnstile(datos.get('cf-turnstile-response') as string | null, Astro.clientAddress))) {
     error = 'No pudimos confirmar que eres una persona. Intenta de nuevo.';
   } else {
-    const usuario = await env.DB.prepare('SELECT id, password_hash FROM usuarios WHERE correo = ? AND activo = 1')
-      .bind(correo)
-      .first<{ id: number; password_hash: string }>();
-    // Mismo mensaje si falla el correo o la contraseña: así no se revela qué correos existen
-    if (usuario && (await verificarPassword(password, usuario.password_hash))) {
-      await crearSesion(usuario.id, Astro.cookies, Astro.url.protocol === 'https:');
-      return Astro.redirect('/sistema');
+    try {
+      const { headers } = await getAuth().api.signInEmail({
+        body: { email: correo, password },
+        headers: Astro.request.headers,
+        returnHeaders: true,
+      });
+      return redirigirConCookies(headers, '/sistema');
+    } catch {
+      // Mismo mensaje si falla el correo, la contraseña o el usuario está desactivado:
+      // así no se revela qué correos existen
+      error = 'Correo o contraseña incorrectos.';
     }
-    error = 'Correo o contraseña incorrectos.';
   }
 }
 ---

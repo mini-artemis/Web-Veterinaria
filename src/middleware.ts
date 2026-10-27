@@ -20,7 +20,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
     }
   }
 
-  context.locals.usuario = await usuarioDeSesion(context.cookies);
+  context.locals.usuario = await usuarioDeSesion(context.request.headers);
 
   // Todo lo que está en /sistema requiere haber iniciado sesión
   if (context.url.pathname.startsWith('/sistema') && !context.locals.usuario) {
