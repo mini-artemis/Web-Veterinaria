@@ -41,6 +41,7 @@ const DURACION_HORAS = 8; // un turno de trabajo
 const crearAuth = () =>
   betterAuth({
     database: pool,
+    trustHost: true,
     // Firma las cookies de sesión. En .env (local) y en las variables de entorno de Vercel
     secret: BETTER_AUTH_SECRET,
     // Cookies solo por HTTPS fuera de `astro dev`
