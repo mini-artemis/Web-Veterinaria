@@ -2,17 +2,16 @@
 // Guía completa en docs/DESPLIEGUE.md
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "veterinaria",
+  "name": "web-veterinaria",
   "compatibility_date": "2026-10-01",
   "observability": { "enabled": true },
 
-  // Base de datos (Cloudflare D1, es SQLite). Al crearla con
-  // `pnpm wrangler d1 create veterinaria-db` copia aquí el database_id que te da.
+  // Base de datos (Cloudflare D1, es SQLite). No lleva database_id: el primer `wrangler deploy`
+  // la crea con este nombre y los siguientes (y los comandos `d1`) la encuentran por el nombre.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "veterinaria-db",
-      "database_id": "REEMPLAZAR-CON-EL-ID-DE-TU-BASE",
       "migrations_dir": "migrations"
     }
   ],
@@ -23,5 +22,14 @@
   "vars": {
     "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
     "PAISES_PERMITIDOS": "MX"
+  },
+
+  // Vistas previas de los PR (`wrangler preview`): no heredan nada de arriba, solo usan lo que se
+  // declara aquí. La base D1 no está porque necesita su database_id (ver docs/DESPLIEGUE.md).
+  "previews": {
+    "vars": {
+      "TURNSTILE_SITE_KEY": "1x00000000000000000000AA",
+      "PAISES_PERMITIDOS": "MX"
+    }
   }
 }

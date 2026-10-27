@@ -2,16 +2,33 @@
 
 Corresponde a la rama del pizarrón **Cloudflare (bots) → Ubicación geo (Mex) → Alto / Bajo / Medio**.
 
-## 1. Crear la cuenta y la base de datos
+## 1. Conectar el repositorio (Workers Builds)
+
+En el panel de Cloudflare: **Workers & Pages → Create → Import a repository** y elige este repositorio.
+No hace falta cambiar nada en **Settings → Build**: con los comandos que Cloudflare pone por defecto
+(`npx wrangler deploy` en `main` y `npx wrangler preview` en las demás ramas) ya funciona, porque al
+instalar las dependencias [`scripts/build-cloudflare.mjs`](../scripts/build-cloudflare.mjs) compila el
+sitio (solo en Cloudflare, donde existe `WORKERS_CI`).
+
+Cada push a `main` compila y publica el sitio. El primer `wrangler deploy` crea la base D1
+`veterinaria-db`. Las migraciones de `migrations/` se aplican desde tu computadora.
+
+Las vistas previas de los PR (`wrangler preview`) **no heredan** la configuración de producción: solo
+usan lo que está en el bloque `previews` de [`wrangler.jsonc`](../wrangler.jsonc). Ahí ya están las
+variables, así que Inicio y Nosotros se ven, pero el login no funciona en una vista previa hasta que:
+
+1. Copies el ID de la base (`pnpm wrangler d1 info veterinaria-db`, después del primer deploy a `main`) y
+   lo agregues en `previews`:
+   `"d1_databases": [{ "binding": "DB", "database_name": "veterinaria-db", "database_id": "<ID>" }]`.
+2. Guardes el secreto para las vistas previas: `pnpm wrangler preview secret put TURNSTILE_SECRET_KEY`.
+
+Opcional: si pones **Deploy command** `pnpm run publicar`, cada deploy aplica también las migraciones.
+
+Cuando termine el primer deploy, crea las tablas y tu administrador desde tu computadora
+(repite `pnpm db:migrar:remoto` cada vez que agregues un archivo a `migrations/`):
 
 ```bash
-pnpm wrangler login                         # abre el navegador para entrar a tu cuenta de Cloudflare
-pnpm wrangler d1 create veterinaria-db      # te da un database_id
-```
-
-Copia el `database_id` en [`wrangler.jsonc`](../wrangler.jsonc) en lugar de `REEMPLAZAR-CON-EL-ID-DE-TU-BASE`.
-
-```bash
+pnpm wrangler login                                             # abre el navegador para entrar a tu cuenta
 pnpm db:migrar:remoto                                           # crea las tablas en Cloudflare
 pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
 ```
@@ -21,22 +38,24 @@ pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
 1. En el panel de Cloudflare entra a **Turnstile → Add widget**. Ponle un nombre, agrega tu dominio
    (o `*.workers.dev`) y elige el modo **Managed**.
 2. Copia la **Site Key** en `wrangler.jsonc`, en `vars.TURNSTILE_SITE_KEY`.
-3. Guarda la **Secret Key** como secreto (no se escribe en ningún archivo):
-
-   ```bash
-   pnpm wrangler secret put TURNSTILE_SECRET_KEY
-   ```
+3. Guarda la **Secret Key** como secreto (no se escribe en ningún archivo), en el panel del Worker:
+   **Settings → Variables and Secrets → Add → Secret**, con el nombre `TURNSTILE_SECRET_KEY`
+   (o desde tu computadora con `pnpm wrangler secret put TURNSTILE_SECRET_KEY`).
+   **Sin este secreto el login rechaza a todos.** Mientras no tengas tus llaves puedes usar la secreta de
+   prueba `1x0000000000000000000000000000000AA` (siempre aprueba, junto con la Site Key de prueba).
 
 En desarrollo se usan las llaves de prueba de Cloudflare, que siempre aprueban
 (la secreta está en `.dev.vars`).
 
 ## 3. Publicar
 
+Se publica solo con cada push a `main` (paso 1). Para publicar desde tu computadora sin hacer push:
+
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
-Te da una dirección tipo `https://veterinaria.<tu-cuenta>.workers.dev`.
+La dirección queda tipo `https://web-veterinaria.<tu-cuenta>.workers.dev`.
 
 ## 4. Ubicación geográfica: solo México
 

@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "packageManager": "pnpm@12.8.1",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
@@ -10,8 +11,10 @@
     "astro": "astro",
     "db:migrar": "wrangler d1 migrations apply veterinaria-db --local",
     "db:migrar:remoto": "wrangler d1 migrations apply veterinaria-db --remote",
+    "postinstall": "node scripts/build-cloudflare.mjs",
     "crear-admin": "node scripts/crear-admin.mjs",
-    "deploy": "astro build && wrangler deploy"
+    "deploy": "astro build && pnpm run publicar",
+    "publicar": "wrangler deploy && wrangler d1 migrations apply veterinaria-db --remote"
   },
   "dependencies": {
     "@astrojs/cloudflare": "^14.4.1",
