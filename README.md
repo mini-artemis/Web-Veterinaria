@@ -13,7 +13,7 @@ se genera en el servidor y guarda sus datos en Cloudflare D1.
 pnpm install
 cp .dev.vars.example .dev.vars        # llaves de prueba de Turnstile
 pnpm db:migrar                        # crea las tablas en la base local
-pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña"
+pnpm crear-admin "Tu Nombre" tu@correo.com    # te pide la contraseña
 pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 ```
 
@@ -25,7 +25,7 @@ pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 | `pnpm build` | Genera el sitio en `dist/` |
 | `pnpm preview` | Prueba el build en el mismo motor que Cloudflare |
 | `pnpm db:migrar` / `pnpm db:migrar:remoto` | Aplica `migrations/` a la base local o a la de Cloudflare |
-| `pnpm crear-admin "Nombre" correo "contraseña" [--remote]` | Crea un administrador |
+| `pnpm crear-admin "Nombre" correo [--remote]` | Crea un administrador o le cambia la contraseña (la pide sin mostrarla) |
 | `pnpm run deploy` | Compila y publica en Cloudflare (normalmente se publica solo con cada push a `main`) |
 
 ## Estructura

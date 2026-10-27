@@ -30,7 +30,7 @@ Cuando termine el primer deploy, crea las tablas y tu administrador desde tu com
 ```bash
 pnpm wrangler login                                             # abre el navegador para entrar a tu cuenta
 pnpm db:migrar:remoto                                           # crea las tablas en Cloudflare
-pnpm crear-admin "Tu Nombre" tu@correo.com "UnaContraseña" --remote
+pnpm crear-admin "Tu Nombre" tu@correo.com --remote                  # te pide la contraseña
 ```
 
 ## 2. Turnstile (bloquear bots en el login)
