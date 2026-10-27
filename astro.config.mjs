@@ -15,6 +15,11 @@ export default defineConfig({
         context: "server",
         access: "secret",
       }),
+      PAISES_PERMITIDOS: envField.string({
+        context: "server",
+        access: "public",
+        default: "MX",
+      }),
     },
   },
   build: {

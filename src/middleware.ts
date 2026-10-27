@@ -15,7 +15,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // En desarrollo no se aplica porque la ubicación local no es real.
   if (!import.meta.env.DEV) {
     const pais = context.request.headers.get('x-vercel-ip-country'); // la pone Vercel en cada visita
-    const permitidos = PAISES_PERMITIDOS.split(',').map((p) => p.trim());
+    const permitidos = (PAISES_PERMITIDOS ?? 'MX').split(',').map((p) => p.trim());
     if (pais && !permitidos.includes(pais)) {
       return new Response('El sistema solo está disponible desde México.', { status: 403 });
     }

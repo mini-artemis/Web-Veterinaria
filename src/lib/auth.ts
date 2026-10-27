@@ -1,3 +1,4 @@
+import { waitUntil } from '@vercel/functions';
 import { betterAuth } from 'better-auth';
 import { BETTER_AUTH_SECRET } from 'astro:env/server';
 import { fila, pool } from './db';
@@ -44,9 +45,16 @@ const crearAuth = () =>
     trustHost: true,
     // Firma las cookies de sesión. En .env (local) y en las variables de entorno de Vercel
     secret: BETTER_AUTH_SECRET,
+    // En Vercel el dominio cambia entre producción y vistas previas (*.vercel.app)
+    baseURL: {
+      allowedHosts: ['*.vercel.app', 'localhost:*', '127.0.0.1:*'],
+      fallback: process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:4321',
+    },
     // Cookies solo por HTTPS fuera de `astro dev`
     advanced: {
       useSecureCookies: !import.meta.env.DEV,
+      trustedProxyHeaders: true,
+      backgroundTasks: { handler: waitUntil },
       // Los id son números autoincrementables, como en el resto de las tablas
       database: { generateId: 'serial' },
     },
@@ -154,17 +162,24 @@ export interface Usuario {
 
 /** Busca al usuario dueño de la cookie de sesión (null si no hay sesión válida). */
 export async function usuarioDeSesion(headers: Headers): Promise<Usuario | null> {
-  const sesion = await getAuth().api.getSession({ headers });
-  if (!sesion || !sesion.user.activo) return null;
-  const id = Number(sesion.user.id);
-  const rol = await fila<{ rol: string; permisos: string[] }>(
-    `SELECT r.nombre AS rol,
-            array(SELECT p.clave FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id WHERE rp.rol_id = r.id) AS permisos
-       FROM roles r WHERE r.id = $1`,
-    [sesion.user.rolId],
-  );
-  if (!rol) return null;
-  return { id, nombre: sesion.user.name, correo: sesion.user.email, ...rol };
+  // Si el navegador ni siquiera envió cookies, no hay sesión abierta (evita consultar la BD en vano)
+  if (!headers.get('cookie')) return null;
+  try {
+    const sesion = await getAuth().api.getSession({ headers });
+    if (!sesion || !sesion.user.activo) return null;
+    const id = Number(sesion.user.id);
+    const rol = await fila<{ rol: string; permisos: string[] }>(
+      `SELECT r.nombre AS rol,
+              array(SELECT p.clave FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id WHERE rp.rol_id = r.id) AS permisos
+         FROM roles r WHERE r.id = $1`,
+      [sesion.user.rolId],
+    );
+    if (!rol) return null;
+    return { id, nombre: sesion.user.name, correo: sesion.user.email, ...rol };
+  } catch (e) {
+    console.error('[auth] Error al verificar la sesión:', e);
+    return null;
+  }
 }
 
 export const puede = (usuario: Usuario | null, permiso: string) => !!usuario?.permisos.includes(permiso);
