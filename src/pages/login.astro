@@ -22,7 +22,12 @@ if (Astro.request.method === "POST") {
       returnHeaders: true,
     });
     return redirigirConCookies(headers, "/sistema");
-  } catch {
+  } catch (e) {
+    // Si el error no es de credenciales inválidas (401/403), lo registramos en consola de Vercel
+    const status = (e as { statusCode?: number })?.statusCode;
+    if (status !== 401 && status !== 403) {
+      console.error("[login] Error al iniciar sesión:", e);
+    }
     // Mismo mensaje si falla el correo, la contraseña o el usuario está desactivado:
     // así no se revela qué correos existen
     error = "Correo o contraseña incorrectos.";
