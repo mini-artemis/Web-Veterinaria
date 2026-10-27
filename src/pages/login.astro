@@ -1,62 +1,72 @@
 ---
-import { TURNSTILE_SITE_KEY } from 'astro:env/server';
-import Layout from '../layouts/Layout.astro';
-import { getAuth, redirigirConCookies } from '../lib/auth';
-import { verificarTurnstile } from '../lib/turnstile';
+import Layout from "../layouts/Layout.astro";
+import { getAuth, redirigirConCookies } from "../lib/auth";
 
 export const prerender = false;
 
 // Si ya tiene sesión, directo a su perfil
-if (Astro.locals.usuario) return Astro.redirect('/sistema');
+if (Astro.locals.usuario) return Astro.redirect("/sistema");
 
-let error = '';
-let correo = '';
+let error = "";
+let correo = "";
 
-if (Astro.request.method === 'POST') {
+if (Astro.request.method === "POST") {
   const datos = await Astro.request.formData();
-  correo = String(datos.get('correo') ?? '').trim();
-  const password = String(datos.get('password') ?? '');
+  correo = String(datos.get("correo") ?? "").trim();
+  const password = String(datos.get("password") ?? "");
 
-  if (!(await verificarTurnstile(datos.get('cf-turnstile-response') as string | null, Astro.clientAddress))) {
-    error = 'No pudimos confirmar que eres una persona. Intenta de nuevo.';
-  } else {
-    try {
-      const { headers } = await getAuth().api.signInEmail({
-        body: { email: correo, password },
-        headers: Astro.request.headers,
-        returnHeaders: true,
-      });
-      return redirigirConCookies(headers, '/sistema');
-    } catch {
-      // Mismo mensaje si falla el correo, la contraseña o el usuario está desactivado:
-      // así no se revela qué correos existen
-      error = 'Correo o contraseña incorrectos.';
-    }
+  try {
+    const { headers } = await getAuth().api.signInEmail({
+      body: { email: correo, password },
+      headers: Astro.request.headers,
+      returnHeaders: true,
+    });
+    return redirigirConCookies(headers, "/sistema");
+  } catch {
+    // Mismo mensaje si falla el correo, la contraseña o el usuario está desactivado:
+    // así no se revela qué correos existen
+    error = "Correo o contraseña incorrectos.";
   }
 }
 ---
 
-<Layout title="Iniciar sesión | Puppy and Kitty" description="Acceso al sistema interno de la clínica Puppy and Kitty.">
-  <script is:inline slot="head" src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
-
+<Layout
+  title="Iniciar sesión | Puppy and Kitty"
+  description="Acceso al sistema interno de la clínica Puppy and Kitty."
+>
   <section class="vet-section">
     <div class="sis-login">
       <h1>Iniciar sesión</h1>
       <p class="sis-muted">Acceso para el personal de la clínica.</p>
 
-      {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+      {
+        error && (
+          <p class="sis-alerta sis-alerta-error" role="alert">
+            {error}
+          </p>
+        )
+      }
 
       <form method="post" class="sis-form">
         <label>
           Correo
-          <input type="email" name="correo" value={correo} required autocomplete="username" />
+          <input
+            type="email"
+            name="correo"
+            value={correo}
+            required
+            autocomplete="username"
+          />
         </label>
         <label>
           Contraseña
-          <input type="password" name="password" required autocomplete="current-password" />
+          <input
+            type="password"
+            name="password"
+            required
+            autocomplete="current-password"
+          />
         </label>
-        <!-- Captcha de Cloudflare: detecta bots sin molestar a las personas -->
-        <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-language="es"></div>
         <button type="submit" class="vet-btn-primary">Entrar</button>
       </form>
     </div>
