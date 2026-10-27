@@ -26,6 +26,8 @@ dist-ssr
 # Astro
 .astro
 
-# Cloudflare
-.wrangler
-.dev.vars
+# Variables de entorno (contraseña de la base de datos y llaves)
+.env
+
+# Vercel
+.vercel

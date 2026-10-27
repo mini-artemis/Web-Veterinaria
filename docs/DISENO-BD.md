@@ -3,12 +3,11 @@
 Sistema interno con login para el personal de la clínica. El primer módulo es el **inventario**
 (medicamentos, vacunas, alimento, material de curación…) y el acceso se controla con **roles**.
 
-- **Motor:** Cloudflare D1 (SQLite)
-- **Scripts SQL:** [`migrations/0001_esquema_inicial.sql`](../migrations/0001_esquema_inicial.sql) (tablas)
+- **Motor:** Postgres en [Neon](https://neon.tech) (conectado a Vercel)
+- **Scripts SQL:** [`migrations/0001_esquema_inicial.sql`](../migrations/0001_esquema_inicial.sql) (tablas y datos iniciales)
   y [`migrations/0002_datos_proveedor.sql`](../migrations/0002_datos_proveedor.sql) (datos completos del proveedor)
 - **Login:** [Better Auth](https://www.better-auth.com) con correo y contraseña. Usa las tablas `usuarios`,
-  `cuentas`, `sesiones` y `verificaciones` ([`migrations/0003_better_auth.sql`](../migrations/0003_better_auth.sql));
-  sus columnas en español se mapean en [`src/lib/auth.ts`](../src/lib/auth.ts)
+  `cuentas`, `sesiones` y `verificaciones`; sus columnas en español se mapean en [`src/lib/auth.ts`](../src/lib/auth.ts)
 
 ## Diagrama entidad-relación
 
@@ -42,13 +41,13 @@ erDiagram
         int id PK
         text nombre
         text correo UK
-        int correo_verificado
+        bool correo_verificado
         text imagen
         int rol_id FK
-        int activo
-        text ultimo_acceso
-        text creado_en
-        text actualizado_en
+        bool activo
+        timestamptz ultimo_acceso
+        timestamptz creado_en
+        timestamptz actualizado_en
     }
     CUENTAS {
         int id PK
@@ -56,26 +55,26 @@ erDiagram
         text proveedor "credential"
         int usuario_id FK
         text password_hash
-        text creado_en
-        text actualizado_en
+        timestamptz creado_en
+        timestamptz actualizado_en
     }
     SESIONES {
         int id PK
         text token UK
         int usuario_id FK
-        text expira_en
+        timestamptz expira_en
         text ip
         text navegador
-        text creado_en
-        text actualizado_en
+        timestamptz creado_en
+        timestamptz actualizado_en
     }
     VERIFICACIONES {
         int id PK
         text identificador
         text valor
-        text expira_en
-        text creado_en
-        text actualizado_en
+        timestamptz expira_en
+        timestamptz creado_en
+        timestamptz actualizado_en
     }
     CATEGORIAS {
         int id PK
@@ -102,15 +101,15 @@ erDiagram
         int categoria_id FK
         int proveedor_id FK
         text unidad
-        real precio_compra
-        real precio_venta
+        numeric precio_compra
+        numeric precio_venta
         int stock
         int stock_minimo
         text lote
-        text fecha_caducidad
-        int activo
-        text creado_en
-        text actualizado_en
+        date fecha_caducidad
+        bool activo
+        timestamptz creado_en
+        timestamptz actualizado_en
     }
     MOVIMIENTOS {
         int id PK
@@ -119,7 +118,7 @@ erDiagram
         text tipo "entrada | salida"
         int cantidad
         text motivo
-        text fecha
+        timestamptz fecha
     }
 ```
 
@@ -151,14 +150,14 @@ erDiagram
 |---|---|---|---|
 | id | INTEGER | PK | Identificador |
 | nombre | TEXT | obligatorio | Nombre completo |
-| correo | TEXT | obligatorio, único (sin importar mayúsculas) | Se usa para iniciar sesión |
-| correo_verificado | INTEGER | 0 o 1, por defecto 0 | Lo pide Better Auth; por ahora no se verifica el correo |
+| correo | TEXT | obligatorio, único, siempre en minúsculas | Se usa para iniciar sesión |
+| correo_verificado | BOOLEAN | por defecto falso | Lo pide Better Auth; por ahora no se verifica el correo |
 | imagen | TEXT | | Foto de perfil (lo pide Better Auth; sin uso) |
 | rol_id | INTEGER | FK → roles | Rol del usuario |
-| activo | INTEGER | 0 o 1, por defecto 1 | Un usuario desactivado no puede entrar |
-| ultimo_acceso | TEXT | | Fecha y hora del último login |
-| creado_en | TEXT | por defecto ahora | Fecha de alta |
-| actualizado_en | TEXT | | Último cambio |
+| activo | BOOLEAN | por defecto verdadero | Un usuario desactivado no puede entrar |
+| ultimo_acceso | TIMESTAMPTZ | | Fecha y hora del último login |
+| creado_en | TIMESTAMPTZ | por defecto ahora | Fecha de alta |
+| actualizado_en | TIMESTAMPTZ | | Último cambio |
 
 **`cuentas`**: formas de iniciar sesión de cada usuario (tabla de Better Auth). Solo se usa correo y
 contraseña, así que hay una por usuario. La llave única `(usuario_id, proveedor)` evita duplicados.
@@ -171,7 +170,7 @@ contraseña, así que hay una por usuario. La llave única `(usuario_id, proveed
 | usuario_id | INTEGER | FK → usuarios, se borra en cascada | Dueño de la cuenta |
 | password_hash | TEXT | | Contraseña cifrada con PBKDF2-SHA256 y sal; **nunca** en texto plano |
 | token_*, alcance | TEXT | | Solo los usaría un login con Google u otro proveedor (sin uso) |
-| creado_en, actualizado_en | TEXT | | |
+| creado_en, actualizado_en | TIMESTAMPTZ | | |
 
 **`sesiones`**: sesiones abiertas (tabla de Better Auth).
 
@@ -180,9 +179,9 @@ contraseña, así que hay una por usuario. La llave única `(usuario_id, proveed
 | id | INTEGER | PK | Identificador |
 | token | TEXT | obligatorio, único | Lo lleva la cookie, firmado con `BETTER_AUTH_SECRET` |
 | usuario_id | INTEGER | FK → usuarios, se borra en cascada | Dueño de la sesión |
-| expira_en | TEXT | obligatorio | La sesión dura 8 horas (un turno) y no se alarga |
+| expira_en | TIMESTAMPTZ | obligatorio | La sesión dura 8 horas (un turno) y no se alarga |
 | ip, navegador | TEXT | | Desde dónde se inició la sesión |
-| creado_en, actualizado_en | TEXT | | |
+| creado_en, actualizado_en | TIMESTAMPTZ | | |
 
 **`verificaciones`**: códigos temporales de Better Auth (p. ej. recuperar la contraseña por correo).
 Por ahora no se usa, pero Better Auth la requiere.
@@ -219,14 +218,14 @@ inventario cada producto enlaza a la ficha de su proveedor.
 | categoria_id | INTEGER | FK → categorias | |
 | proveedor_id | INTEGER | FK → proveedores, opcional | Si se borra el proveedor queda en NULL |
 | unidad | TEXT | por defecto `pieza` | pieza, caja, frasco, dosis, bolsa… |
-| precio_compra | REAL | ≥ 0 | Lo que le cuesta a la clínica |
-| precio_venta | REAL | ≥ 0 | Precio al cliente |
+| precio_compra | NUMERIC(10,2) | ≥ 0 | Lo que le cuesta a la clínica |
+| precio_venta | NUMERIC(10,2) | ≥ 0 | Precio al cliente |
 | stock | INTEGER | ≥ 0 | Existencias actuales |
 | stock_minimo | INTEGER | ≥ 0 | Si `stock ≤ stock_minimo` el sistema avisa |
 | lote | TEXT | | Lote del fabricante |
-| fecha_caducidad | TEXT | AAAA-MM-DD | El sistema avisa 60 días antes |
-| activo | INTEGER | 0 o 1 | "Dar de baja" en vez de borrar, para conservar el historial |
-| creado_en / actualizado_en | TEXT | | Fechas de control |
+| fecha_caducidad | DATE | | El sistema avisa 60 días antes |
+| activo | BOOLEAN | por defecto verdadero | "Dar de baja" en vez de borrar, para conservar el historial |
+| creado_en / actualizado_en | TIMESTAMPTZ | | Fechas de control |
 
 **`movimientos`**: historial de entradas y salidas.
 
@@ -238,7 +237,7 @@ inventario cada producto enlaza a la ficha de su proveedor.
 | tipo | TEXT | `entrada` o `salida` | |
 | cantidad | INTEGER | > 0 | |
 | motivo | TEXT | | Compra, consulta, venta, caducado… |
-| fecha | TEXT | por defecto ahora | |
+| fecha | TIMESTAMPTZ | por defecto ahora | |
 
 ### Reglas de negocio
 

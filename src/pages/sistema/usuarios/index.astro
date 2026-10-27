@@ -1,7 +1,7 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import { hashPassword, puede } from '../../../lib/auth';
+import { consulta, esDuplicado, transaccion } from '../../../lib/db';
 import { entero, fechaHora, texto } from '../../../lib/forms';
 
 export const prerender = false;
@@ -26,46 +26,47 @@ if (Astro.request.method === 'POST') {
     else {
       try {
         // El usuario y su contraseña (tabla cuentas, como la lee Better Auth) se guardan juntos
-        await env.DB.batch([
-          env.DB.prepare("INSERT INTO usuarios (nombre, correo, rol_id, actualizado_en) VALUES (?, ?, ?, datetime('now'))").bind(
+        const hash = await hashPassword(password);
+        await transaccion(async (db) => {
+          const { rows } = await db.query('INSERT INTO usuarios (nombre, correo, rol_id) VALUES ($1, $2, $3) RETURNING id', [
             nombre,
             correo,
             entero(datos, 'rol_id'),
-          ),
-          env.DB.prepare(
-            "INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash) SELECT id, 'credential', id, ? FROM usuarios WHERE correo = ?",
-          ).bind(await hashPassword(password), correo),
-        ]);
+          ]);
+          await db.query("INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash) VALUES ($1, 'credential', $2, $3)", [
+            String(rows[0].id),
+            rows[0].id,
+            hash,
+          ]);
+        });
         mensaje = `Usuario ${correo} creado.`;
       } catch (e) {
-        error = String(e).includes('UNIQUE') ? 'Ya existe un usuario con ese correo.' : 'No se pudo crear el usuario.';
+        error = esDuplicado(e) ? 'Ya existe un usuario con ese correo.' : 'No se pudo crear el usuario.';
       }
     }
   } else if (id === usuario.id) {
     // Evita que el administrador se quite a sí mismo el acceso por accidente
     error = 'No puedes cambiar tu propio rol ni desactivarte.';
   } else if (accion === 'rol') {
-    await env.DB.prepare('UPDATE usuarios SET rol_id = ? WHERE id = ?').bind(entero(datos, 'rol_id'), id).run();
+    await consulta('UPDATE usuarios SET rol_id = $1, actualizado_en = now() WHERE id = $2', [entero(datos, 'rol_id'), id]);
     mensaje = 'Rol actualizado.';
   } else if (accion === 'estado') {
     // Al desactivar a alguien también se cierran sus sesiones abiertas
-    await env.DB.batch([
-      env.DB.prepare('UPDATE usuarios SET activo = 1 - activo WHERE id = ?').bind(id),
-      env.DB.prepare('DELETE FROM sesiones WHERE usuario_id = ?').bind(id),
-    ]);
+    await transaccion(async (db) => {
+      await db.query('UPDATE usuarios SET activo = NOT activo, actualizado_en = now() WHERE id = $1', [id]);
+      await db.query('DELETE FROM sesiones WHERE usuario_id = $1', [id]);
+    });
     mensaje = 'Estado del usuario actualizado.';
   }
 }
 
-const [usuarios, roles] = await env.DB.batch([
-  env.DB.prepare(
+const [listaUsuarios, listaRoles] = await Promise.all([
+  consulta<{ id: number; nombre: string; correo: string; rol_id: number; activo: boolean; ultimo_acceso: Date | null; rol: string }>(
     `SELECT u.id, u.nombre, u.correo, u.rol_id, u.activo, u.ultimo_acceso, r.nombre AS rol
        FROM usuarios u JOIN roles r ON r.id = u.rol_id ORDER BY u.activo DESC, u.nombre`,
   ),
-  env.DB.prepare('SELECT id, nombre, descripcion FROM roles ORDER BY id'),
+  consulta<{ id: number; nombre: string; descripcion: string }>('SELECT id, nombre, descripcion FROM roles ORDER BY id'),
 ]);
-const listaUsuarios = usuarios.results as { id: number; nombre: string; correo: string; rol_id: number; activo: number; ultimo_acceso: string | null; rol: string }[];
-const listaRoles = roles.results as { id: number; nombre: string; descripcion: string }[];
 ---
 
 <SistemaLayout title="Usuarios y roles">
@@ -79,7 +80,7 @@ const listaRoles = roles.results as { id: number; nombre: string; descripcion: s
         <thead><tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Último acceso</th><th scope="col">Estado</th></tr></thead>
         <tbody>
           {listaUsuarios.map((u) => (
-            <tr class:list={{ 'sis-inactivo': u.activo === 0 }}>
+            <tr class:list={{ 'sis-inactivo': !u.activo }}>
               <td>{u.nombre}</td>
               <td>{u.correo}</td>
               <td>
@@ -100,7 +101,7 @@ const listaRoles = roles.results as { id: number; nombre: string; descripcion: s
                   <form method="post" class="sis-inline">
                     <input type="hidden" name="accion" value="estado" />
                     <input type="hidden" name="id" value={u.id} />
-                    <button type="submit" class="sis-btn-sec">{u.activo === 1 ? 'Desactivar' : 'Activar'}</button>
+                    <button type="submit" class="sis-btn-sec">{u.activo ? 'Desactivar' : 'Activar'}</button>
                   </form>
                 )}
               </td>

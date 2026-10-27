@@ -7,24 +7,21 @@
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
-    "preview": "astro preview",
     "astro": "astro",
-    "db:migrar": "wrangler d1 migrations apply veterinaria-db --local",
-    "db:migrar:remoto": "wrangler d1 migrations apply veterinaria-db --remote",
-    "postinstall": "node scripts/build-cloudflare.mjs",
-    "crear-admin": "node scripts/crear-admin.mjs",
-    "deploy": "astro build && pnpm run publicar",
-    "publicar": "wrangler deploy && wrangler d1 migrations apply veterinaria-db --remote"
+    "db:migrar": "node --env-file-if-exists=.env scripts/migrar.mjs",
+    "crear-admin": "node --env-file-if-exists=.env scripts/crear-admin.mjs"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^14.4.1",
+    "@astrojs/vercel": "^11.0.16",
+    "@vercel/functions": "^3.10.3",
     "astro": "^7.4.1",
     "better-auth": "^1.7.13",
+    "pg": "^8.23.1",
     "sharp": "^0.35.5"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.11",
-    "typescript": "^6.0.3",
-    "wrangler": "^4.151.3"
+    "@types/pg": "^8.23.1",
+    "typescript": "^6.0.3"
   }
 }

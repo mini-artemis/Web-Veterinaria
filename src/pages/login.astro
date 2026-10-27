@@ -1,5 +1,5 @@
 ---
-import { env } from 'cloudflare:workers';
+import { TURNSTILE_SITE_KEY } from 'astro:env/server';
 import Layout from '../layouts/Layout.astro';
 import { getAuth, redirigirConCookies } from '../lib/auth';
 import { verificarTurnstile } from '../lib/turnstile';
@@ -56,7 +56,7 @@ if (Astro.request.method === 'POST') {
           <input type="password" name="password" required autocomplete="current-password" />
         </label>
         <!-- Captcha de Cloudflare: detecta bots sin molestar a las personas -->
-        <div class="cf-turnstile" data-sitekey={env.TURNSTILE_SITE_KEY} data-language="es"></div>
+        <div class="cf-turnstile" data-sitekey={TURNSTILE_SITE_KEY} data-language="es"></div>
         <button type="submit" class="vet-btn-primary">Entrar</button>
       </form>
     </div>

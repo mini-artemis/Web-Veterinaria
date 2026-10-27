@@ -1,12 +1,12 @@
-import { env } from 'cloudflare:workers';
 import { betterAuth } from 'better-auth';
+import { BETTER_AUTH_SECRET } from 'astro:env/server';
+import { fila, pool } from './db';
 
 // ===== Contraseñas =====
 // Se guardan con PBKDF2-SHA256 y una "sal" aleatoria por usuario.
 // Formato: pbkdf2$iteraciones$sal$hash (en base64). scripts/crear-admin.mjs usa el mismo.
-// Better Auth usa scrypt por defecto, pero en Cloudflare Workers gasta demasiado CPU;
-// PBKDF2 viene incluido en Workers (crypto.subtle) y así las contraseñas de antes siguen sirviendo.
-const ITERACIONES = 100_000; // máximo que permite Cloudflare Workers
+// (Better Auth usa scrypt por defecto; se deja PBKDF2 para que scripts/crear-admin.mjs genere el mismo formato.)
+const ITERACIONES = 100_000;
 
 const aBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
 const deBase64 = (texto: string) => Uint8Array.from(atob(texto), (c) => c.charCodeAt(0));
@@ -40,9 +40,9 @@ const DURACION_HORAS = 8; // un turno de trabajo
 
 const crearAuth = () =>
   betterAuth({
-    database: env.DB,
-    // Firma las cookies de sesión. En .dev.vars (local) y con `wrangler secret put` (producción)
-    secret: env.BETTER_AUTH_SECRET,
+    database: pool,
+    // Firma las cookies de sesión. En .env (local) y en las variables de entorno de Vercel
+    secret: BETTER_AUTH_SECRET,
     // Cookies solo por HTTPS fuera de `astro dev`
     advanced: {
       useSecureCookies: !import.meta.env.DEV,
@@ -118,22 +118,20 @@ const crearAuth = () =>
         create: {
           // Un usuario desactivado no puede iniciar sesión
           before: async (sesion) => {
-            const fila = await env.DB.prepare('SELECT activo FROM usuarios WHERE id = ?').bind(sesion.userId).first<{ activo: number }>();
-            if (fila?.activo !== 1) return false;
+            const usuario = await fila<{ activo: boolean }>('SELECT activo FROM usuarios WHERE id = $1', [sesion.userId]);
+            if (!usuario?.activo) return false;
           },
           after: async (sesion) => {
-            await env.DB.batch([
-              env.DB.prepare("UPDATE usuarios SET ultimo_acceso = datetime('now') WHERE id = ?").bind(sesion.userId),
-              // Limpieza de sesiones vencidas de cualquier usuario
-              env.DB.prepare('DELETE FROM sesiones WHERE expira_en < ?').bind(new Date().toISOString()),
-            ]);
+            await pool.query('UPDATE usuarios SET ultimo_acceso = now() WHERE id = $1', [sesion.userId]);
+            // Limpieza de sesiones vencidas de cualquier usuario
+            await pool.query('DELETE FROM sesiones WHERE expira_en < now()');
           },
         },
       },
     },
   });
 
-// Se crea en la primera petición que lo usa: al compilar las páginas públicas no hay base de datos
+// Se crea en la primera petición que lo usa, no al compilar las páginas públicas
 let instancia: ReturnType<typeof crearAuth> | undefined;
 export const getAuth = () => (instancia ??= crearAuth());
 
@@ -158,22 +156,14 @@ export async function usuarioDeSesion(headers: Headers): Promise<Usuario | null>
   const sesion = await getAuth().api.getSession({ headers });
   if (!sesion || !sesion.user.activo) return null;
   const id = Number(sesion.user.id);
-  const fila = await env.DB.prepare(
+  const rol = await fila<{ rol: string; permisos: string[] }>(
     `SELECT r.nombre AS rol,
-            (SELECT group_concat(p.clave) FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
-              WHERE rp.rol_id = r.id) AS permisos
-       FROM roles r WHERE r.id = ?`,
-  )
-    .bind(sesion.user.rolId)
-    .first<{ rol: string; permisos: string | null }>();
-  if (!fila) return null;
-  return {
-    id,
-    nombre: sesion.user.name,
-    correo: sesion.user.email,
-    rol: fila.rol,
-    permisos: fila.permisos ? fila.permisos.split(',') : [],
-  };
+            array(SELECT p.clave FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id WHERE rp.rol_id = r.id) AS permisos
+       FROM roles r WHERE r.id = $1`,
+    [sesion.user.rolId],
+  );
+  if (!rol) return null;
+  return { id, nombre: sesion.user.name, correo: sesion.user.email, ...rol };
 }
 
 export const puede = (usuario: Usuario | null, permiso: string) => !!usuario?.permisos.includes(permiso);
