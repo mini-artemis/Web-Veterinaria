@@ -1,12 +1,14 @@
 import { defineMiddleware } from 'astro:middleware';
-import { PAISES_PERMITIDOS } from 'astro:env/server';
-import { usuarioDeSesion } from './lib/auth';
 
 const esPrivada = (ruta: string) => ruta === '/login' || ruta === '/logout' || ruta.startsWith('/sistema');
 
 export const onRequest = defineMiddleware(async (context, next) => {
   // Las páginas públicas se generan al compilar: no hay usuario ni base de datos
   if (context.isPrerendered || !esPrivada(context.url.pathname)) return next();
+
+  // Se cargan aquí y no arriba: al compilar las páginas públicas no hay base de datos ni llaves,
+  // y astro:env revisa todas las variables secretas en cuanto se importa
+  const [{ PAISES_PERMITIDOS }, { usuarioDeSesion }] = await Promise.all([import('astro:env/server'), import('./lib/auth')]);
 
   // Ubicación geográfica: el sistema solo se abre desde los países permitidos (México).
   // La regla principal está en el firewall de Vercel (docs/DESPLIEGUE.md); esto es un segundo candado.
