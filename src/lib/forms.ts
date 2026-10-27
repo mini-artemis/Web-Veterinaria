@@ -9,6 +9,6 @@ export const numero = (datos: FormData, campo: string) => Number(texto(datos, ca
 
 export const pesos = (n: number) => n.toLocaleString('es-MX', { style: 'currency', currency: 'MXN' });
 
-/** Fecha guardada en UTC por SQLite ('AAAA-MM-DD HH:MM:SS') mostrada en hora de México. */
-export const fechaHora = (utc: string) =>
-  new Date(utc.replace(' ', 'T') + 'Z').toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' });
+/** Fecha y hora de la base de datos mostrada en hora de México. */
+export const fechaHora = (fecha: Date) =>
+  fecha.toLocaleString('es-MX', { timeZone: 'America/Mexico_City', dateStyle: 'medium', timeStyle: 'short' });

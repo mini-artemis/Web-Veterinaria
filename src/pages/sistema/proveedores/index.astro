@@ -1,7 +1,7 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import { puede } from '../../../lib/auth';
+import { consulta } from '../../../lib/db';
 import { camposProveedor, type Proveedor } from '../../../lib/proveedores';
 
 export const prerender = false;
@@ -12,10 +12,10 @@ if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso pa
 // Proveedor que se resalta al llegar desde el inventario (?id=...)
 const seleccionado = Number(Astro.url.searchParams.get('id')) || 0;
 
-const { results: proveedores } = await env.DB.prepare(
-  `SELECT pr.*, (SELECT count(*) FROM productos p WHERE p.proveedor_id = pr.id AND p.activo = 1) AS productos
+const proveedores = await consulta<Proveedor & { productos: number }>(
+  `SELECT pr.*, (SELECT count(*) FROM productos p WHERE p.proveedor_id = pr.id AND p.activo) AS productos
      FROM proveedores pr ORDER BY pr.nombre`,
-).all<Proveedor & { productos: number }>();
+);
 ---
 
 <SistemaLayout title="Proveedores">

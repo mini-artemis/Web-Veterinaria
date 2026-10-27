@@ -1,13 +1,13 @@
-import { env } from 'cloudflare:workers';
+import { consulta, esDuplicado } from './db';
 import { entero, numero, texto, textoONulo } from './forms';
 
 /** Catálogos para los <select> del formulario de producto. */
 export async function catalogos() {
-  const [categorias, proveedores] = await env.DB.batch<{ id: number; nombre: string }>([
-    env.DB.prepare('SELECT id, nombre FROM categorias ORDER BY nombre'),
-    env.DB.prepare('SELECT id, nombre FROM proveedores ORDER BY nombre'),
+  const [categorias, proveedores] = await Promise.all([
+    consulta<{ id: number; nombre: string }>('SELECT id, nombre FROM categorias ORDER BY nombre'),
+    consulta<{ id: number; nombre: string }>('SELECT id, nombre FROM proveedores ORDER BY nombre'),
   ]);
-  return { categorias: categorias.results, proveedores: proveedores.results };
+  return { categorias, proveedores };
 }
 
 /** Lee y valida los campos del formulario. Devuelve los datos o un mensaje de error. */
@@ -33,4 +33,4 @@ export function leerProducto(datos: FormData) {
 }
 
 export const mensajeDeError = (e: unknown) =>
-  String(e).includes('UNIQUE') ? 'Ya existe un producto con ese código.' : 'No se pudo guardar. Revisa los datos.';
+  esDuplicado(e) ? 'Ya existe un producto con ese código.' : 'No se pudo guardar. Revisa los datos.';

@@ -1,6 +1,4 @@
 import { defineMiddleware } from 'astro:middleware';
-import { env } from 'cloudflare:workers';
-import { usuarioDeSesion } from './lib/auth';
 
 const esPrivada = (ruta: string) => ruta === '/login' || ruta === '/logout' || ruta.startsWith('/sistema');
 
@@ -8,13 +6,16 @@ export const onRequest = defineMiddleware(async (context, next) => {
   // Las páginas públicas se generan al compilar: no hay usuario ni base de datos
   if (context.isPrerendered || !esPrivada(context.url.pathname)) return next();
 
+  // Se cargan aquí y no arriba: al compilar las páginas públicas no hay base de datos ni llaves,
+  // y astro:env revisa todas las variables secretas en cuanto se importa
+  const [{ PAISES_PERMITIDOS }, { usuarioDeSesion }] = await Promise.all([import('astro:env/server'), import('./lib/auth')]);
+
   // Ubicación geográfica: el sistema solo se abre desde los países permitidos (México).
-  // La regla principal está en el firewall de Cloudflare (docs/DESPLIEGUE.md); esto es un segundo candado.
+  // La regla principal está en el firewall de Vercel (docs/DESPLIEGUE.md); esto es un segundo candado.
   // En desarrollo no se aplica porque la ubicación local no es real.
   if (!import.meta.env.DEV) {
-    const request = context.request as Request & { cf?: { country?: string } };
-    const pais = request.cf?.country ?? request.headers.get('cf-ipcountry');
-    const permitidos = env.PAISES_PERMITIDOS.split(',').map((p) => p.trim());
+    const pais = context.request.headers.get('x-vercel-ip-country'); // la pone Vercel en cada visita
+    const permitidos = PAISES_PERMITIDOS.split(',').map((p) => p.trim());
     if (pais && !permitidos.includes(pais)) {
       return new Response('El sistema solo está disponible desde México.', { status: 403 });
     }

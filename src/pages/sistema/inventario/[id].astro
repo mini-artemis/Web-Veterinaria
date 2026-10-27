@@ -1,8 +1,8 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import ProductoForm from '../../../components/ProductoForm.astro';
 import { puede } from '../../../lib/auth';
+import { consulta, fila, transaccion } from '../../../lib/db';
 import { entero, fechaHora, pesos, texto, textoONulo } from '../../../lib/forms';
 import { catalogos, leerProducto, mensajeDeError } from '../../../lib/productos';
 
@@ -24,15 +24,22 @@ if (Astro.request.method === 'POST') {
     const cantidad = entero(datos, 'cantidad');
     if (!(cantidad > 0)) error = 'La cantidad debe ser un número entero mayor que 0.';
     else {
-      // Las dos operaciones van juntas (batch = transacción): si una falla, no se guarda ninguna.
+      // Las dos operaciones van en una transacción: si una falla, no se guarda ninguna.
       // Si la salida deja el stock en negativo, la restricción CHECK (stock >= 0) la rechaza.
       try {
-        await env.DB.batch([
-          env.DB.prepare("UPDATE productos SET stock = stock + ?, actualizado_en = datetime('now') WHERE id = ?")
-            .bind(tipo === 'entrada' ? cantidad : -cantidad, id),
-          env.DB.prepare('INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES (?, ?, ?, ?, ?)')
-            .bind(id, usuario.id, tipo, cantidad, textoONulo(datos, 'motivo')),
-        ]);
+        await transaccion(async (db) => {
+          await db.query('UPDATE productos SET stock = stock + $1, actualizado_en = now() WHERE id = $2', [
+            tipo === 'entrada' ? cantidad : -cantidad,
+            id,
+          ]);
+          await db.query('INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES ($1, $2, $3, $4, $5)', [
+            id,
+            usuario.id,
+            tipo,
+            cantidad,
+            textoONulo(datos, 'motivo'),
+          ]);
+        });
         mensaje = `${tipo === 'entrada' ? 'Entrada' : 'Salida'} de ${cantidad} registrada.`;
       } catch {
         error = 'No hay suficiente stock para esa salida.';
@@ -44,14 +51,13 @@ if (Astro.request.method === 'POST') {
     else {
       const p = leido.producto!;
       try {
-        await env.DB.prepare(
-          `UPDATE productos SET codigo = ?, nombre = ?, descripcion = ?, categoria_id = ?, proveedor_id = ?, unidad = ?,
-                  precio_compra = ?, precio_venta = ?, stock_minimo = ?, lote = ?, fecha_caducidad = ?, actualizado_en = datetime('now')
-            WHERE id = ?`,
-        )
-          .bind(p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
-                p.stock_minimo, p.lote, p.fecha_caducidad, id)
-          .run();
+        await consulta(
+          `UPDATE productos SET codigo = $1, nombre = $2, descripcion = $3, categoria_id = $4, proveedor_id = $5, unidad = $6,
+                  precio_compra = $7, precio_venta = $8, stock_minimo = $9, lote = $10, fecha_caducidad = $11, actualizado_en = now()
+            WHERE id = $12`,
+          [p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
+           p.stock_minimo, p.lote, p.fecha_caducidad, id],
+        );
         mensaje = 'Producto actualizado.';
       } catch (e) {
         error = mensajeDeError(e);
@@ -59,29 +65,27 @@ if (Astro.request.method === 'POST') {
     }
   } else if (accion === 'estado' && puede(usuario, 'inventario.editar')) {
     // "Dar de baja" en lugar de borrar: así no se pierde el historial de movimientos
-    await env.DB.prepare("UPDATE productos SET activo = 1 - activo, actualizado_en = datetime('now') WHERE id = ?").bind(id).run();
+    await consulta('UPDATE productos SET activo = NOT activo, actualizado_en = now() WHERE id = $1', [id]);
     mensaje = 'Estado del producto actualizado.';
   } else {
     return new Response('No tienes permiso para esta acción.', { status: 403 });
   }
 }
 
-const producto = await env.DB.prepare(
+const producto = await fila<Record<string, any>>(
   `SELECT p.*, c.nombre AS categoria, pr.nombre AS proveedor
      FROM productos p JOIN categorias c ON c.id = p.categoria_id LEFT JOIN proveedores pr ON pr.id = p.proveedor_id
-    WHERE p.id = ?`,
-)
-  .bind(id)
-  .first<Record<string, any>>();
+    WHERE p.id = $1`,
+  [id],
+);
 if (!producto) return new Response('Producto no encontrado.', { status: 404 });
 
-const { results: movimientos } = await env.DB.prepare(
+const movimientos = await consulta<{ tipo: string; cantidad: number; motivo: string | null; fecha: Date; usuario: string }>(
   `SELECT m.tipo, m.cantidad, m.motivo, m.fecha, u.nombre AS usuario
      FROM movimientos m JOIN usuarios u ON u.id = m.usuario_id
-    WHERE m.producto_id = ? ORDER BY m.fecha DESC, m.id DESC LIMIT 50`,
-)
-  .bind(id)
-  .all<{ tipo: string; cantidad: number; motivo: string | null; fecha: string; usuario: string }>();
+    WHERE m.producto_id = $1 ORDER BY m.fecha DESC, m.id DESC LIMIT 50`,
+  [id],
+);
 
 const { categorias, proveedores } = puede(usuario, 'inventario.editar') ? await catalogos() : { categorias: [], proveedores: [] };
 ---
@@ -90,7 +94,7 @@ const { categorias, proveedores } = puede(usuario, 'inventario.editar') ? await 
   <p><a href="/sistema/inventario">← Volver al inventario</a></p>
   {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
   {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
-  {producto.activo === 0 && <p class="sis-alerta sis-alerta-error">Este producto está dado de baja.</p>}
+  {!producto.activo && <p class="sis-alerta sis-alerta-error">Este producto está dado de baja.</p>}
 
   <div class="sis-grid">
     <div class="sis-card">
@@ -110,7 +114,7 @@ const { categorias, proveedores } = puede(usuario, 'inventario.editar') ? await 
     </div>
 
     {
-      puede(usuario, 'inventario.movimiento') && producto.activo === 1 && (
+      puede(usuario, 'inventario.movimiento') && producto.activo && (
         <form method="post" class="sis-card sis-form">
           <h2>Registrar movimiento</h2>
           <input type="hidden" name="accion" value="movimiento" />
@@ -159,7 +163,7 @@ const { categorias, proveedores } = puede(usuario, 'inventario.editar') ? await 
         </form>
         <form method="post" class="sis-card">
           <input type="hidden" name="accion" value="estado" />
-          <button type="submit" class="sis-btn-sec">{producto.activo === 1 ? 'Dar de baja' : 'Reactivar'} producto</button>
+          <button type="submit" class="sis-btn-sec">{producto.activo ? 'Dar de baja' : 'Reactivar'} producto</button>
         </form>
       </>
     )

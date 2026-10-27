@@ -1,8 +1,8 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import ProductoForm from '../../../components/ProductoForm.astro';
 import { puede } from '../../../lib/auth';
+import { transaccion } from '../../../lib/db';
 import { entero } from '../../../lib/forms';
 import { catalogos, leerProducto, mensajeDeError } from '../../../lib/productos';
 
@@ -24,21 +24,25 @@ if (Astro.request.method === 'POST') {
   } else {
     const p = leido.producto!;
     try {
-      const creado = await env.DB.prepare(
-        `INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, unidad, precio_compra, precio_venta,
-                                stock, stock_minimo, lote, fecha_caducidad)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id`,
-      )
-        .bind(p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
-              stock, p.stock_minimo, p.lote, p.fecha_caducidad)
-        .first<{ id: number }>();
-      // El stock inicial queda registrado como la primera entrada
-      if (stock > 0) {
-        await env.DB.prepare("INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES (?, ?, 'entrada', ?, 'Inventario inicial')")
-          .bind(creado!.id, usuario.id, stock)
-          .run();
-      }
-      return Astro.redirect(`/sistema/inventario/${creado!.id}`);
+      const id = await transaccion(async (db) => {
+        const { rows } = await db.query(
+          `INSERT INTO productos (codigo, nombre, descripcion, categoria_id, proveedor_id, unidad, precio_compra, precio_venta,
+                                  stock, stock_minimo, lote, fecha_caducidad)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+          [p.codigo, p.nombre, p.descripcion, p.categoria_id, p.proveedor_id, p.unidad, p.precio_compra, p.precio_venta,
+           stock, p.stock_minimo, p.lote, p.fecha_caducidad],
+        );
+        // El stock inicial queda registrado como la primera entrada
+        if (stock > 0) {
+          await db.query("INSERT INTO movimientos (producto_id, usuario_id, tipo, cantidad, motivo) VALUES ($1, $2, 'entrada', $3, 'Inventario inicial')", [
+            rows[0].id,
+            usuario.id,
+            stock,
+          ]);
+        }
+        return rows[0].id as number;
+      });
+      return Astro.redirect(`/sistema/inventario/${id}`);
     } catch (e) {
       error = mensajeDeError(e);
       valores = { ...p, stock };

@@ -1,7 +1,7 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../layouts/SistemaLayout.astro';
 import { getAuth, puede } from '../../lib/auth';
+import { consulta } from '../../lib/db';
 import { texto } from '../../lib/forms';
 
 export const prerender = false;
@@ -28,25 +28,22 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-const { results: permisos } = await env.DB.prepare(
+const permisos = await consulta<{ descripcion: string }>(
   `SELECT p.descripcion FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
-    JOIN usuarios u ON u.rol_id = rp.rol_id WHERE u.id = ? ORDER BY p.id`,
-)
-  .bind(usuario.id)
-  .all<{ descripcion: string }>();
+    JOIN usuarios u ON u.rol_id = rp.rol_id WHERE u.id = $1 ORDER BY p.id`,
+  [usuario.id],
+);
 
 // Avisos del inventario: poco stock y caducidad en los próximos 60 días
 const avisos = puede(usuario, 'inventario.ver')
-  ? (
-      await env.DB.prepare(
-        `SELECT id, nombre, stock, stock_minimo, fecha_caducidad,
-                stock <= stock_minimo AS bajo,
-                fecha_caducidad IS NOT NULL AND fecha_caducidad <= date('now', '+60 days') AS caduca
-           FROM productos
-          WHERE activo = 1 AND (stock <= stock_minimo OR (fecha_caducidad IS NOT NULL AND fecha_caducidad <= date('now', '+60 days')))
-          ORDER BY nombre`,
-      ).all<{ id: number; nombre: string; stock: number; stock_minimo: number; fecha_caducidad: string | null; bajo: number; caduca: number }>()
-    ).results
+  ? await consulta<{ id: number; nombre: string; stock: number; stock_minimo: number; fecha_caducidad: string | null; bajo: boolean; caduca: boolean }>(
+      `SELECT id, nombre, stock, stock_minimo, fecha_caducidad,
+              stock <= stock_minimo AS bajo,
+              coalesce(fecha_caducidad <= current_date + 60, false) AS caduca
+         FROM productos
+        WHERE activo AND (stock <= stock_minimo OR fecha_caducidad <= current_date + 60)
+        ORDER BY nombre`,
+    )
   : [];
 ---
 
@@ -87,8 +84,8 @@ const avisos = puede(usuario, 'inventario.ver')
             {avisos.map((a) => (
               <li>
                 <a href={`/sistema/inventario/${a.id}`}>{a.nombre}</a>
-                {a.bajo === 1 && <span class="sis-badge sis-badge-alerta">Quedan {a.stock} (mínimo {a.stock_minimo})</span>}
-                {a.caduca === 1 && <span class="sis-badge sis-badge-aviso">Caduca {a.fecha_caducidad}</span>}
+                {a.bajo && <span class="sis-badge sis-badge-alerta">Quedan {a.stock} (mínimo {a.stock_minimo})</span>}
+                {a.caduca && <span class="sis-badge sis-badge-aviso">Caduca {a.fecha_caducidad}</span>}
               </li>
             ))}
           </ul>

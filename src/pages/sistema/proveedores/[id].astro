@@ -1,7 +1,7 @@
 ---
-import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import { puede } from '../../../lib/auth';
+import { consulta, fila } from '../../../lib/db';
 import { camposProveedor, type Proveedor } from '../../../lib/proveedores';
 
 export const prerender = false;
@@ -10,13 +10,14 @@ const usuario = Astro.locals.usuario!;
 if (!puede(usuario, 'inventario.ver')) return new Response('No tienes permiso para ver proveedores.', { status: 403 });
 
 const id = Number(Astro.params.id);
-const [proveedores, productos] = await env.DB.batch([
-  env.DB.prepare('SELECT * FROM proveedores WHERE id = ?').bind(id),
-  env.DB.prepare('SELECT id, codigo, nombre, stock, unidad FROM productos WHERE proveedor_id = ? AND activo = 1 ORDER BY nombre').bind(id),
+const [proveedor, surtidos] = await Promise.all([
+  fila<Proveedor>('SELECT * FROM proveedores WHERE id = $1', [id]),
+  consulta<{ id: number; codigo: string; nombre: string; stock: number; unidad: string }>(
+    'SELECT id, codigo, nombre, stock, unidad FROM productos WHERE proveedor_id = $1 AND activo ORDER BY nombre',
+    [id],
+  ),
 ]);
-const proveedor = proveedores.results[0] as Proveedor | undefined;
 if (!proveedor) return new Response('Proveedor no encontrado.', { status: 404 });
-const surtidos = productos.results as { id: number; codigo: string; nombre: string; stock: number; unidad: string }[];
 ---
 
 <SistemaLayout title={proveedor.nombre ?? 'Proveedor'}>
