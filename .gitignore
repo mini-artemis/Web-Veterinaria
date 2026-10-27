@@ -28,6 +28,7 @@ dist-ssr
 
 # Variables de entorno (contraseña de la base de datos y llaves)
 .env
+.env.example
 
 # Vercel
 .vercel
