@@ -1,9 +1,11 @@
 import { env } from 'cloudflare:workers';
-import type { AstroCookies } from 'astro';
+import { betterAuth } from 'better-auth';
 
 // ===== Contraseñas =====
 // Se guardan con PBKDF2-SHA256 y una "sal" aleatoria por usuario.
 // Formato: pbkdf2$iteraciones$sal$hash (en base64). scripts/crear-admin.mjs usa el mismo.
+// Better Auth usa scrypt por defecto, pero en Cloudflare Workers gasta demasiado CPU;
+// PBKDF2 viene incluido en Workers (crypto.subtle) y así las contraseñas de antes siguen sirviendo.
 const ITERACIONES = 100_000; // máximo que permite Cloudflare Workers
 
 const aBase64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
@@ -21,7 +23,7 @@ export async function hashPassword(password: string) {
   return `pbkdf2$${ITERACIONES}$${aBase64(sal)}$${aBase64(hash)}`;
 }
 
-export async function verificarPassword(password: string, guardado: string) {
+async function verificarPassword(password: string, guardado: string) {
   const [algoritmo, iteraciones, sal, hash] = guardado.split('$');
   if (algoritmo !== 'pbkdf2') return false;
   const calculado = await derivar(password, deBase64(sal), Number(iteraciones));
@@ -33,43 +35,116 @@ export async function verificarPassword(password: string, guardado: string) {
   return diferencia === 0;
 }
 
-// ===== Sesiones =====
-export const COOKIE_SESION = 'sesion';
+// ===== Better Auth =====
 const DURACION_HORAS = 8; // un turno de trabajo
 
-async function sha256(texto: string) {
-  const bytes = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texto));
-  return [...new Uint8Array(bytes)].map((b) => b.toString(16).padStart(2, '0')).join('');
-}
-
-export async function crearSesion(usuarioId: number, cookies: AstroCookies, segura: boolean) {
-  const token = aBase64(crypto.getRandomValues(new Uint8Array(32)));
-  const expira = new Date(Date.now() + DURACION_HORAS * 3600_000);
-  await env.DB.batch([
-    env.DB.prepare('INSERT INTO sesiones (id, usuario_id, expira_en) VALUES (?, ?, ?)').bind(
-      await sha256(token),
-      usuarioId,
-      expira.toISOString(),
-    ),
-    env.DB.prepare("UPDATE usuarios SET ultimo_acceso = datetime('now') WHERE id = ?").bind(usuarioId),
-    // Limpieza de sesiones vencidas de cualquier usuario
-    env.DB.prepare('DELETE FROM sesiones WHERE expira_en < ?').bind(new Date().toISOString()),
-  ]);
-  cookies.set(COOKIE_SESION, token, {
-    httpOnly: true, // JavaScript de la página no la puede leer
-    secure: segura, // solo viaja por HTTPS
-    sameSite: 'lax', // no se envía en formularios de otros sitios
-    path: '/',
-    expires: expira,
+const crearAuth = () =>
+  betterAuth({
+    database: env.DB,
+    // Firma las cookies de sesión. En .dev.vars (local) y con `wrangler secret put` (producción)
+    secret: env.BETTER_AUTH_SECRET,
+    // Cookies solo por HTTPS fuera de `astro dev`
+    advanced: {
+      useSecureCookies: !import.meta.env.DEV,
+      // Los id son números autoincrementables, como en el resto de las tablas
+      database: { generateId: 'serial' },
+    },
+    emailAndPassword: {
+      enabled: true,
+      // Nadie se registra solo: las cuentas las crea un administrador (sistema/usuarios o crear-admin)
+      disableSignUp: true,
+      minPasswordLength: 8,
+      password: { hash: hashPassword, verify: ({ hash, password }) => verificarPassword(password, hash) },
+    },
+    session: {
+      expiresIn: DURACION_HORAS * 3600,
+      disableSessionRefresh: true, // dura un turno y se acaba, aunque se siga usando
+      modelName: 'sesiones',
+      fields: {
+        token: 'token',
+        userId: 'usuario_id',
+        expiresAt: 'expira_en',
+        ipAddress: 'ip',
+        userAgent: 'navegador',
+        createdAt: 'creado_en',
+        updatedAt: 'actualizado_en',
+      },
+    },
+    // Las tablas y columnas están en español (migrations/0003_better_auth.sql)
+    user: {
+      modelName: 'usuarios',
+      fields: {
+        name: 'nombre',
+        email: 'correo',
+        emailVerified: 'correo_verificado',
+        image: 'imagen',
+        createdAt: 'creado_en',
+        updatedAt: 'actualizado_en',
+      },
+      additionalFields: {
+        rolId: { type: 'number', fieldName: 'rol_id', required: true, input: false },
+        activo: { type: 'boolean', defaultValue: true, input: false },
+      },
+    },
+    account: {
+      modelName: 'cuentas',
+      fields: {
+        accountId: 'cuenta_id',
+        providerId: 'proveedor',
+        userId: 'usuario_id',
+        password: 'password_hash',
+        accessToken: 'token_acceso',
+        refreshToken: 'token_refresco',
+        idToken: 'token_id',
+        accessTokenExpiresAt: 'token_acceso_expira',
+        refreshTokenExpiresAt: 'token_refresco_expira',
+        scope: 'alcance',
+        createdAt: 'creado_en',
+        updatedAt: 'actualizado_en',
+      },
+    },
+    verification: {
+      modelName: 'verificaciones',
+      fields: {
+        identifier: 'identificador',
+        value: 'valor',
+        expiresAt: 'expira_en',
+        createdAt: 'creado_en',
+        updatedAt: 'actualizado_en',
+      },
+    },
+    databaseHooks: {
+      session: {
+        create: {
+          // Un usuario desactivado no puede iniciar sesión
+          before: async (sesion) => {
+            const fila = await env.DB.prepare('SELECT activo FROM usuarios WHERE id = ?').bind(sesion.userId).first<{ activo: number }>();
+            if (fila?.activo !== 1) return false;
+          },
+          after: async (sesion) => {
+            await env.DB.batch([
+              env.DB.prepare("UPDATE usuarios SET ultimo_acceso = datetime('now') WHERE id = ?").bind(sesion.userId),
+              // Limpieza de sesiones vencidas de cualquier usuario
+              env.DB.prepare('DELETE FROM sesiones WHERE expira_en < ?').bind(new Date().toISOString()),
+            ]);
+          },
+        },
+      },
+    },
   });
+
+// Se crea en la primera petición que lo usa: al compilar las páginas públicas no hay base de datos
+let instancia: ReturnType<typeof crearAuth> | undefined;
+export const getAuth = () => (instancia ??= crearAuth());
+
+/** Redirige conservando las cookies que puso Better Auth (iniciar o cerrar sesión). */
+export function redirigirConCookies(cookies: Headers, destino: string) {
+  const headers = new Headers({ Location: destino });
+  for (const cookie of cookies.getSetCookie()) headers.append('Set-Cookie', cookie);
+  return new Response(null, { status: 303, headers });
 }
 
-export async function cerrarSesion(cookies: AstroCookies) {
-  const token = cookies.get(COOKIE_SESION)?.value;
-  if (token) await env.DB.prepare('DELETE FROM sesiones WHERE id = ?').bind(await sha256(token)).run();
-  cookies.delete(COOKIE_SESION, { path: '/' });
-}
-
+// ===== Usuario de la sesión =====
 export interface Usuario {
   id: number;
   nombre: string;
@@ -79,22 +154,26 @@ export interface Usuario {
 }
 
 /** Busca al usuario dueño de la cookie de sesión (null si no hay sesión válida). */
-export async function usuarioDeSesion(cookies: AstroCookies): Promise<Usuario | null> {
-  const token = cookies.get(COOKIE_SESION)?.value;
-  if (!token) return null;
+export async function usuarioDeSesion(headers: Headers): Promise<Usuario | null> {
+  const sesion = await getAuth().api.getSession({ headers });
+  if (!sesion || !sesion.user.activo) return null;
+  const id = Number(sesion.user.id);
   const fila = await env.DB.prepare(
-    `SELECT u.id, u.nombre, u.correo, r.nombre AS rol,
+    `SELECT r.nombre AS rol,
             (SELECT group_concat(p.clave) FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id
-              WHERE rp.rol_id = u.rol_id) AS permisos
-       FROM sesiones s
-       JOIN usuarios u ON u.id = s.usuario_id
-       JOIN roles r ON r.id = u.rol_id
-      WHERE s.id = ? AND s.expira_en > ? AND u.activo = 1`,
+              WHERE rp.rol_id = r.id) AS permisos
+       FROM roles r WHERE r.id = ?`,
   )
-    .bind(await sha256(token), new Date().toISOString())
-    .first<Omit<Usuario, 'permisos'> & { permisos: string | null }>();
+    .bind(sesion.user.rolId)
+    .first<{ rol: string; permisos: string | null }>();
   if (!fila) return null;
-  return { ...fila, permisos: fila.permisos ? fila.permisos.split(',') : [] };
+  return {
+    id,
+    nombre: sesion.user.name,
+    correo: sesion.user.email,
+    rol: fila.rol,
+    permisos: fila.permisos ? fila.permisos.split(',') : [],
+  };
 }
 
 export const puede = (usuario: Usuario | null, permiso: string) => !!usuario?.permisos.includes(permiso);

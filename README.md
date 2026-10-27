@@ -2,7 +2,8 @@
 
 Sitio hecho con [Astro](https://astro.build) y publicado en Cloudflare Workers. Las páginas públicas
 (Inicio, Nosotros) se generan como HTML estático; el **sistema interno con login** (`/login`, `/sistema`)
-se genera en el servidor y guarda sus datos en Cloudflare D1.
+se genera en el servidor y guarda sus datos en Cloudflare D1. El login (correo y contraseña) usa
+[Better Auth](https://www.better-auth.com).
 
 - Diseño de la base de datos: [`docs/DISENO-BD.md`](docs/DISENO-BD.md)
 - Publicar y configurar la seguridad en Cloudflare: [`docs/DESPLIEGUE.md`](docs/DESPLIEGUE.md)
@@ -11,7 +12,7 @@ se genera en el servidor y guarda sus datos en Cloudflare D1.
 
 ```bash
 pnpm install
-cp .dev.vars.example .dev.vars        # llaves de prueba de Turnstile
+cp .dev.vars.example .dev.vars        # llaves de prueba de Turnstile; pon tu BETTER_AUTH_SECRET
 pnpm db:migrar                        # crea las tablas en la base local
 pnpm crear-admin "Tu Nombre" tu@correo.com    # te pide la contraseña
 pnpm dev                              # http://localhost:4321  →  "Mi perfil"
@@ -35,8 +36,8 @@ pnpm dev                              # http://localhost:4321  →  "Mi perfil"
 - `src/pages/nosotros.astro` — Nosotros (`/nosotros`)
 - `src/styles/global.css` — estilos
 - `src/assets/` — imágenes originales; Astro las convierte a WebP en varios tamaños con `<Image>`
-- `src/pages/login.astro`, `src/pages/logout.ts` — inicio y cierre de sesión (con Turnstile)
+- `src/pages/login.astro`, `src/pages/logout.ts` — inicio y cierre de sesión con Better Auth (y Turnstile)
 - `src/pages/sistema/` — Mi perfil, Inventario y Usuarios (requieren sesión)
 - `src/middleware.ts` — revisa la sesión y el país en las rutas del sistema
-- `src/lib/` — contraseñas y sesiones (`auth.ts`), Turnstile, utilidades de formularios
+- `src/lib/` — configuración de Better Auth (`auth.ts`), Turnstile, utilidades de formularios
 - `migrations/` — tablas y datos iniciales de la base de datos

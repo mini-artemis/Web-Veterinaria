@@ -6,6 +6,9 @@ Sistema interno con login para el personal de la clínica. El primer módulo es 
 - **Motor:** Cloudflare D1 (SQLite)
 - **Scripts SQL:** [`migrations/0001_esquema_inicial.sql`](../migrations/0001_esquema_inicial.sql) (tablas)
   y [`migrations/0002_datos_proveedor.sql`](../migrations/0002_datos_proveedor.sql) (datos completos del proveedor)
+- **Login:** [Better Auth](https://www.better-auth.com) con correo y contraseña. Usa las tablas `usuarios`,
+  `cuentas`, `sesiones` y `verificaciones` ([`migrations/0003_better_auth.sql`](../migrations/0003_better_auth.sql));
+  sus columnas en español se mapean en [`src/lib/auth.ts`](../src/lib/auth.ts)
 
 ## Diagrama entidad-relación
 
@@ -15,6 +18,7 @@ erDiagram
     ROLES ||--o{ ROL_PERMISOS : ""
     PERMISOS ||--o{ ROL_PERMISOS : ""
     USUARIOS ||--o{ SESIONES : "abre"
+    USUARIOS ||--o{ CUENTAS : "entra con"
     USUARIOS ||--o{ MOVIMIENTOS : "registra"
     CATEGORIAS ||--o{ PRODUCTOS : "clasifica"
     PROVEEDORES |o--o{ PRODUCTOS : "surte"
@@ -38,17 +42,40 @@ erDiagram
         int id PK
         text nombre
         text correo UK
-        text password_hash
+        int correo_verificado
+        text imagen
         int rol_id FK
         int activo
         text ultimo_acceso
         text creado_en
+        text actualizado_en
+    }
+    CUENTAS {
+        int id PK
+        text cuenta_id
+        text proveedor "credential"
+        int usuario_id FK
+        text password_hash
+        text creado_en
+        text actualizado_en
     }
     SESIONES {
-        text id PK "hash del token"
+        int id PK
+        text token UK
         int usuario_id FK
         text expira_en
+        text ip
+        text navegador
         text creado_en
+        text actualizado_en
+    }
+    VERIFICACIONES {
+        int id PK
+        text identificador
+        text valor
+        text expira_en
+        text creado_en
+        text actualizado_en
     }
     CATEGORIAS {
         int id PK
@@ -125,20 +152,40 @@ erDiagram
 | id | INTEGER | PK | Identificador |
 | nombre | TEXT | obligatorio | Nombre completo |
 | correo | TEXT | obligatorio, único (sin importar mayúsculas) | Se usa para iniciar sesión |
-| password_hash | TEXT | obligatorio | Contraseña cifrada con PBKDF2-SHA256 y sal; **nunca** en texto plano |
+| correo_verificado | INTEGER | 0 o 1, por defecto 0 | Lo pide Better Auth; por ahora no se verifica el correo |
+| imagen | TEXT | | Foto de perfil (lo pide Better Auth; sin uso) |
 | rol_id | INTEGER | FK → roles | Rol del usuario |
 | activo | INTEGER | 0 o 1, por defecto 1 | Un usuario desactivado no puede entrar |
 | ultimo_acceso | TEXT | | Fecha y hora del último login |
 | creado_en | TEXT | por defecto ahora | Fecha de alta |
+| actualizado_en | TEXT | | Último cambio |
 
-**`sesiones`**: sesiones abiertas (login).
+**`cuentas`**: formas de iniciar sesión de cada usuario (tabla de Better Auth). Solo se usa correo y
+contraseña, así que hay una por usuario. La llave única `(usuario_id, proveedor)` evita duplicados.
 
 | Campo | Tipo | Reglas | Descripción |
 |---|---|---|---|
-| id | TEXT | PK | Hash SHA-256 del token que guarda la cookie |
+| id | INTEGER | PK | Identificador |
+| cuenta_id | TEXT | obligatorio | Con correo y contraseña es el id del usuario |
+| proveedor | TEXT | obligatorio | `credential` = correo y contraseña |
+| usuario_id | INTEGER | FK → usuarios, se borra en cascada | Dueño de la cuenta |
+| password_hash | TEXT | | Contraseña cifrada con PBKDF2-SHA256 y sal; **nunca** en texto plano |
+| token_*, alcance | TEXT | | Solo los usaría un login con Google u otro proveedor (sin uso) |
+| creado_en, actualizado_en | TEXT | | |
+
+**`sesiones`**: sesiones abiertas (tabla de Better Auth).
+
+| Campo | Tipo | Reglas | Descripción |
+|---|---|---|---|
+| id | INTEGER | PK | Identificador |
+| token | TEXT | obligatorio, único | Lo lleva la cookie, firmado con `BETTER_AUTH_SECRET` |
 | usuario_id | INTEGER | FK → usuarios, se borra en cascada | Dueño de la sesión |
-| expira_en | TEXT | obligatorio | La sesión dura 8 horas (un turno) |
-| creado_en | TEXT | por defecto ahora | |
+| expira_en | TEXT | obligatorio | La sesión dura 8 horas (un turno) y no se alarga |
+| ip, navegador | TEXT | | Desde dónde se inició la sesión |
+| creado_en, actualizado_en | TEXT | | |
+
+**`verificaciones`**: códigos temporales de Better Auth (p. ej. recuperar la contraseña por correo).
+Por ahora no se usa, pero Better Auth la requiere.
 
 ### Inventario
 

@@ -1,7 +1,7 @@
 ---
 import { env } from 'cloudflare:workers';
 import SistemaLayout from '../../layouts/SistemaLayout.astro';
-import { hashPassword, puede, verificarPassword } from '../../lib/auth';
+import { getAuth, puede } from '../../lib/auth';
 import { texto } from '../../lib/forms';
 
 export const prerender = false;
@@ -15,13 +15,16 @@ if (Astro.request.method === 'POST') {
   const datos = await Astro.request.formData();
   const actual = texto(datos, 'actual');
   const nueva = texto(datos, 'nueva');
-  const fila = await env.DB.prepare('SELECT password_hash FROM usuarios WHERE id = ?').bind(usuario.id).first<{ password_hash: string }>();
-  if (!fila || !(await verificarPassword(actual, fila.password_hash))) error = 'La contraseña actual no es correcta.';
-  else if (nueva.length < 8) error = 'La nueva contraseña debe tener al menos 8 caracteres.';
+  if (nueva.length < 8) error = 'La nueva contraseña debe tener al menos 8 caracteres.';
   else if (nueva !== texto(datos, 'confirmar')) error = 'Las contraseñas nuevas no coinciden.';
   else {
-    await env.DB.prepare('UPDATE usuarios SET password_hash = ? WHERE id = ?').bind(await hashPassword(nueva), usuario.id).run();
-    mensaje = 'Contraseña actualizada.';
+    try {
+      // Better Auth revisa la contraseña actual antes de guardar la nueva
+      await getAuth().api.changePassword({ body: { currentPassword: actual, newPassword: nueva }, headers: Astro.request.headers });
+      mensaje = 'Contraseña actualizada.';
+    } catch {
+      error = 'La contraseña actual no es correcta.';
+    }
   }
 }
 

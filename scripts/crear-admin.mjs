@@ -15,13 +15,16 @@ if (!nombre || !correo) {
   process.exit(1);
 }
 
+let lineas;
+
 /** Lee una línea de la terminal sin mostrar lo que se escribe. */
 function preguntarOculto(pregunta) {
   process.stdout.write(pregunta);
   if (!process.stdin.isTTY) {
-    // Entrada redirigida (p. ej. `echo ... |`): no hay nada que ocultar
-    const rl = createInterface({ input: process.stdin });
-    return new Promise((resolve) => rl.once('line', (linea) => (rl.close(), process.stdout.write('\n'), resolve(linea))));
+    // Entrada redirigida (p. ej. `printf ... |`): no hay nada que ocultar. Se usa un solo lector
+    // para todas las preguntas, porque uno nuevo perdería las líneas que el anterior ya leyó.
+    lineas ??= createInterface({ input: process.stdin })[Symbol.asyncIterator]();
+    return lineas.next().then(({ value }) => (process.stdout.write('\n'), value ?? ''));
   }
   return new Promise((resolve) => {
     let texto = '';
@@ -68,8 +71,12 @@ const b64 = (bytes) => Buffer.from(bytes).toString('base64');
 const hash = `pbkdf2$${ITERACIONES}$${b64(sal)}$${b64(bits)}`;
 
 const sql = (texto) => `'${texto.replaceAll("'", "''")}'`;
-const consulta = `INSERT INTO usuarios (nombre, correo, password_hash, rol_id) VALUES (${sql(nombre)}, ${sql(correo.toLowerCase())}, ${sql(hash)}, 1)
-  ON CONFLICT(correo) DO UPDATE SET nombre = excluded.nombre, password_hash = excluded.password_hash, rol_id = 1, activo = 1;`;
+// La contraseña va en la tabla cuentas, que es donde la busca Better Auth
+const consulta = `INSERT INTO usuarios (nombre, correo, rol_id, actualizado_en) VALUES (${sql(nombre)}, ${sql(correo.toLowerCase())}, 1, datetime('now'))
+  ON CONFLICT(correo) DO UPDATE SET nombre = excluded.nombre, rol_id = 1, activo = 1, actualizado_en = excluded.actualizado_en;
+INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash)
+  SELECT id, 'credential', id, ${sql(hash)} FROM usuarios WHERE correo = ${sql(correo.toLowerCase())}
+  ON CONFLICT(usuario_id, proveedor) DO UPDATE SET password_hash = excluded.password_hash, actualizado_en = datetime('now');`;
 
 execFileSync('pnpm', ['wrangler', 'd1', 'execute', 'veterinaria-db', destino, '--command', consulta], { stdio: 'inherit' });
 console.log(`\nAdministrador listo: ${correo} (${destino === '--remote' ? 'Cloudflare' : 'local'})`);
