@@ -142,7 +142,8 @@ CREATE INDEX idx_movimientos_producto ON movimientos(producto_id, fecha);
 INSERT INTO roles (id, nombre, descripcion) VALUES
   (1, 'Administrador', 'Acceso total: inventario y usuarios'),
   (2, 'Veterinario',   'Consulta el inventario y registra entradas y salidas'),
-  (3, 'Recepción',     'Solo consulta el inventario');
+  (3, 'Recepción',     'Solo consulta el inventario'),
+  (4, 'Usuario',       'Solo ve la bienvenida al iniciar sesión');
 
 INSERT INTO permisos (id, clave, descripcion) VALUES
   (1, 'inventario.ver',        'Ver productos y existencias'),

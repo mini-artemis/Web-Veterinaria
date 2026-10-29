@@ -9,14 +9,17 @@ interface Props {
 const { title } = Astro.props;
 const usuario = Astro.locals.usuario!;
 const path = Astro.url.pathname.replace(/\/$/, '');
+const esUsuario = usuario.rol === 'Usuario';
 
 // Pestañas del sistema; cada una aparece solo si el rol tiene el permiso
-const pestanas = [
-  { href: '/sistema', texto: 'Mi perfil', visible: true },
-  { href: '/sistema/inventario', texto: 'Inventario', visible: puede(usuario, 'inventario.ver') },
-  { href: '/sistema/proveedores', texto: 'Proveedores', visible: puede(usuario, 'inventario.ver') },
-  { href: '/sistema/usuarios', texto: 'Usuarios', visible: puede(usuario, 'usuarios.administrar') },
-].filter((p) => p.visible);
+const pestanas = esUsuario
+  ? [{ href: '/sistema', texto: 'Bienvenida', visible: true }]
+  : [
+      { href: '/sistema', texto: 'Mi perfil', visible: true },
+      { href: '/sistema/inventario', texto: 'Inventario', visible: puede(usuario, 'inventario.ver') },
+      { href: '/sistema/proveedores', texto: 'Proveedores', visible: puede(usuario, 'inventario.ver') },
+      { href: '/sistema/usuarios', texto: 'Usuarios', visible: puede(usuario, 'usuarios.administrar') },
+    ].filter((p) => p.visible);
 
 const activa = (href: string) => (href === '/sistema' ? path === href : path.startsWith(href));
 ---

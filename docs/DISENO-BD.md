@@ -131,7 +131,7 @@ erDiagram
 | Campo | Tipo | Reglas | Descripción |
 |---|---|---|---|
 | id | INTEGER | PK | Identificador |
-| nombre | TEXT | obligatorio, único | Administrador, Veterinario, Recepción |
+| nombre | TEXT | obligatorio, único | Administrador, Veterinario, Recepción, Usuario |
 | descripcion | TEXT | | Qué hace el rol |
 
 **`permisos`**: acciones que el sistema puede permitir o negar.
@@ -250,12 +250,12 @@ inventario cada producto enlaza a la ficha de su proveedor.
 
 ## Roles y permisos
 
-| Permiso | Administrador | Veterinario | Recepción |
-|---|:-:|:-:|:-:|
-| Ver productos y existencias (`inventario.ver`) | ✅ | ✅ | ✅ |
-| Registrar entradas y salidas (`inventario.movimiento`) | ✅ | ✅ | ❌ |
-| Crear, editar y dar de baja productos (`inventario.editar`) | ✅ | ❌ | ❌ |
-| Crear usuarios y asignar roles (`usuarios.administrar`) | ✅ | ❌ | ❌ |
+| Permiso | Administrador | Veterinario | Recepción | Usuario |
+|---|:-:|:-:|:-:|:-:|
+| Ver productos y existencias (`inventario.ver`) | ✅ | ✅ | ✅ | ❌ |
+| Registrar entradas y salidas (`inventario.movimiento`) | ✅ | ✅ | ❌ | ❌ |
+| Crear, editar y dar de baja productos (`inventario.editar`) | ✅ | ❌ | ❌ | ❌ |
+| Crear usuarios y asignar roles (`usuarios.administrar`) | ✅ | ❌ | ❌ | ❌ |
 
 Para agregar un rol o un permiso nuevo basta con insertar filas en `roles`, `permisos` y `rol_permisos`.
 El código revisa los permisos, no los nombres de los roles.
