@@ -84,9 +84,9 @@ try {
     [nombre, correo],
   );
   await cliente.query(
-    `INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash) VALUES ($1, 'credential', $2, $3)
-       ON CONFLICT (usuario_id, proveedor) DO UPDATE SET password_hash = excluded.password_hash, actualizado_en = now()`,
-    [String(rows[0].id), rows[0].id, hash],
+    `INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash, password_visible) VALUES ($1, 'credential', $2, $3, $4)
+       ON CONFLICT (usuario_id, proveedor) DO UPDATE SET password_hash = excluded.password_hash, password_visible = excluded.password_visible, actualizado_en = now()`,
+    [String(rows[0].id), rows[0].id, hash, password],
   );
   await cliente.query('COMMIT');
 } finally {

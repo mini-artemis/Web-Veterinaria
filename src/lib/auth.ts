@@ -158,6 +158,7 @@ export interface Usuario {
   correo: string;
   rol: string;
   permisos: string[];
+  avisoAceptado: boolean;
 }
 
 /** Busca al usuario dueño de la cookie de sesión (null si no hay sesión válida). */
@@ -168,14 +169,17 @@ export async function usuarioDeSesion(headers: Headers): Promise<Usuario | null>
     const sesion = await getAuth().api.getSession({ headers });
     if (!sesion || !sesion.user.activo) return null;
     const id = Number(sesion.user.id);
-    const rol = await fila<{ rol: string; permisos: string[] }>(
-      `SELECT r.nombre AS rol,
+    const datos = await fila<{ nombre: string; correo: string; rol: string; permisos: string[]; avisoAceptado: boolean }>(
+      `SELECT u.nombre, u.correo, r.nombre AS rol,
+              u.aviso_privacidad_aceptado AS "avisoAceptado",
               array(SELECT p.clave FROM rol_permisos rp JOIN permisos p ON p.id = rp.permiso_id WHERE rp.rol_id = r.id) AS permisos
-         FROM roles r WHERE r.id = $1`,
-      [sesion.user.rolId],
+         FROM usuarios u
+         JOIN roles r ON r.id = u.rol_id
+        WHERE u.id = $1 AND u.activo`,
+      [id],
     );
-    if (!rol) return null;
-    return { id, nombre: sesion.user.name, correo: sesion.user.email, ...rol };
+    if (!datos) return null;
+    return { id, ...datos };
   } catch (e) {
     console.error('[auth] Error al verificar la sesión:', e);
     return null;

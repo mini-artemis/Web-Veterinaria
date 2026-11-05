@@ -11,6 +11,8 @@ if (!puede(usuario, 'usuarios.administrar')) return new Response('No tienes perm
 
 let mensaje = '';
 let error = '';
+let abrirModalEditar = false;
+let valoresEditar: Record<string, string> = {};
 
 if (Astro.request.method === 'POST') {
   const datos = await Astro.request.formData();
@@ -33,15 +35,78 @@ if (Astro.request.method === 'POST') {
             correo,
             entero(datos, 'rol_id'),
           ]);
-          await db.query("INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash) VALUES ($1, 'credential', $2, $3)", [
-            String(rows[0].id),
-            rows[0].id,
-            hash,
-          ]);
+          await db.query(
+            "INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash, password_visible) VALUES ($1, 'credential', $2, $3, $4)",
+            [String(rows[0].id), rows[0].id, hash, password],
+          );
         });
         mensaje = `Usuario ${correo} creado.`;
       } catch (e) {
         error = esDuplicado(e) ? 'Ya existe un usuario con ese correo.' : 'No se pudo crear el usuario.';
+      }
+    }
+  } else if (accion === 'editar') {
+    const nombre = texto(datos, 'nombre');
+    const correo = texto(datos, 'correo').toLowerCase();
+    const password = texto(datos, 'password');
+    const rolId = entero(datos, 'rol_id');
+    const activo = texto(datos, 'activo') === '1';
+
+    valoresEditar = {
+      id: String(id),
+      nombre,
+      correo,
+      password,
+      rol_id: String(rolId),
+      activo: activo ? '1' : '0',
+    };
+
+    if (!Number.isInteger(id) || id <= 0) {
+      error = 'Usuario no válido.';
+    } else if (!nombre || !correo) {
+      error = 'Nombre y correo son obligatorios.';
+      abrirModalEditar = true;
+    } else if (password && password.length < 8) {
+      error = 'La nueva contraseña debe tener al menos 8 caracteres.';
+      abrirModalEditar = true;
+    } else {
+      try {
+        const hash = password ? await hashPassword(password) : null;
+        await transaccion(async (db) => {
+          if (id === usuario.id) {
+            // Al editarse a sí mismo solo actualiza nombre y correo (no puede quitarse su propio rol ni desactivarse)
+            await db.query('UPDATE usuarios SET nombre = $1, correo = $2, actualizado_en = now() WHERE id = $3', [
+              nombre,
+              correo,
+              id,
+            ]);
+          } else {
+            await db.query(
+              'UPDATE usuarios SET nombre = $1, correo = $2, rol_id = $3, activo = $4, actualizado_en = now() WHERE id = $5',
+              [nombre, correo, rolId, activo, id],
+            );
+            if (!activo) {
+              await db.query('DELETE FROM sesiones WHERE usuario_id = $1', [id]);
+            }
+          }
+
+          if (hash) {
+            await db.query(
+              `INSERT INTO cuentas (cuenta_id, proveedor, usuario_id, password_hash, password_visible)
+               VALUES ($1, 'credential', $2, $3, $4)
+               ON CONFLICT (usuario_id, proveedor)
+               DO UPDATE SET password_hash = excluded.password_hash,
+                             password_visible = excluded.password_visible,
+                             actualizado_en = now()`,
+              [String(id), id, hash, password],
+            );
+          }
+        });
+        mensaje = `Datos de ${nombre} actualizados.`;
+        valoresEditar = {};
+      } catch (e) {
+        abrirModalEditar = true;
+        error = esDuplicado(e) ? 'Ya existe otro usuario con ese correo.' : 'No se pudieron actualizar los datos del usuario.';
       }
     }
   } else if (id === usuario.id) {
@@ -61,9 +126,21 @@ if (Astro.request.method === 'POST') {
 }
 
 const [listaUsuarios, listaRoles] = await Promise.all([
-  consulta<{ id: number; nombre: string; correo: string; rol_id: number; activo: boolean; ultimo_acceso: Date | null; rol: string }>(
-    `SELECT u.id, u.nombre, u.correo, u.rol_id, u.activo, u.ultimo_acceso, r.nombre AS rol
-       FROM usuarios u JOIN roles r ON r.id = u.rol_id ORDER BY u.activo DESC, u.nombre`,
+  consulta<{
+    id: number;
+    nombre: string;
+    correo: string;
+    rol_id: number;
+    activo: boolean;
+    ultimo_acceso: Date | null;
+    rol: string;
+    password_visible: string | null;
+  }>(
+    `SELECT u.id, u.nombre, u.correo, u.rol_id, u.activo, u.ultimo_acceso, r.nombre AS rol, c.password_visible
+       FROM usuarios u
+       JOIN roles r ON r.id = u.rol_id
+       LEFT JOIN cuentas c ON c.usuario_id = u.id AND c.proveedor = 'credential'
+      ORDER BY u.activo DESC, u.nombre`,
   ),
   consulta<{ id: number; nombre: string; descripcion: string }>('SELECT id, nombre, descripcion FROM roles ORDER BY id'),
 ]);
@@ -71,18 +148,44 @@ const [listaUsuarios, listaRoles] = await Promise.all([
 
 <SistemaLayout title="Usuarios y roles">
   {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
-  {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+  {error && !abrirModalEditar && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
 
   <div class="sis-card">
     <h2>Personal con acceso</h2>
     <div class="sis-tabla-wrap">
       <table class="sis-tabla">
-        <thead><tr><th scope="col">Nombre</th><th scope="col">Correo</th><th scope="col">Rol</th><th scope="col">Último acceso</th><th scope="col">Estado</th></tr></thead>
+        <thead>
+          <tr>
+            <th scope="col">Nombre</th>
+            <th scope="col">Correo</th>
+            <th scope="col">Contraseña</th>
+            <th scope="col">Rol</th>
+            <th scope="col">Último acceso</th>
+            <th scope="col">Estado</th>
+            <th scope="col">Acciones</th>
+          </tr>
+        </thead>
         <tbody>
           {listaUsuarios.map((u) => (
             <tr class:list={{ 'sis-inactivo': !u.activo }}>
               <td>{u.nombre}</td>
               <td>{u.correo}</td>
+              <td>
+                {u.password_visible ? (
+                  <div class="sis-pass-celda">
+                    <code class="sis-pass-texto" data-password={u.password_visible}>••••••••</code>
+                    <button
+                      type="button"
+                      class="sis-btn-sec sis-btn-pass"
+                      aria-label={`Mostrar contraseña de ${u.nombre}`}
+                    >
+                      Ver
+                    </button>
+                  </div>
+                ) : (
+                  <span class="sis-muted">••••••••</span>
+                )}
+              </td>
               <td>
                 {u.id === usuario.id ? u.rol : (
                   <form method="post" class="sis-inline">
@@ -97,7 +200,7 @@ const [listaUsuarios, listaRoles] = await Promise.all([
               </td>
               <td>{u.ultimo_acceso ? fechaHora(u.ultimo_acceso) : 'Nunca'}</td>
               <td>
-                {u.id === usuario.id ? 'Tú' : (
+                {u.id === usuario.id ? 'Tú (Activo)' : (
                   <form method="post" class="sis-inline">
                     <input type="hidden" name="accion" value="estado" />
                     <input type="hidden" name="id" value={u.id} />
@@ -105,12 +208,99 @@ const [listaUsuarios, listaRoles] = await Promise.all([
                   </form>
                 )}
               </td>
+              <td>
+                <button
+                  type="button"
+                  class="sis-btn-sec btn-editar-usuario"
+                  data-id={u.id}
+                  data-nombre={u.nombre}
+                  data-correo={u.correo}
+                  data-password={u.password_visible ?? ''}
+                  data-rol-id={u.rol_id}
+                  data-activo={u.activo ? '1' : '0'}
+                  data-propio={u.id === usuario.id ? 'true' : 'false'}
+                >
+                  Editar
+                </button>
+              </td>
             </tr>
           ))}
         </tbody>
       </table>
     </div>
   </div>
+
+  <!-- Modal para editar datos del usuario -->
+  <dialog id="modal-editar-usuario" class="sis-modal" data-abrir={abrirModalEditar ? 'true' : 'false'} data-mi-id={usuario.id}>
+    <div class="sis-modal-contenido">
+      <div class="sis-modal-head">
+        <h2>Editar datos del usuario</h2>
+        <button type="button" id="btn-cerrar-modal-usuario" class="sis-btn-sec" aria-label="Cerrar ventana">
+          ✕
+        </button>
+      </div>
+
+      {error && abrirModalEditar && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+
+      <form method="post" class="sis-form" id="form-editar-usuario">
+        <input type="hidden" name="accion" value="editar" />
+        <input type="hidden" name="id" id="edit-id" value={valoresEditar.id ?? ''} />
+
+        <label>
+          Nombre completo
+          <input name="nombre" id="edit-nombre" required maxlength="80" value={valoresEditar.nombre ?? ''} />
+        </label>
+
+        <label>
+          Correo electrónico
+          <input type="email" name="correo" id="edit-correo" required autocomplete="off" value={valoresEditar.correo ?? ''} />
+        </label>
+
+        <label>
+          Contraseña (dejar igual o escribir una nueva, mín. 8 caracteres)
+          <input
+            type="text"
+            name="password"
+            id="edit-password"
+            minlength="8"
+            autocomplete="off"
+            placeholder="Dejar en blanco para no cambiarla"
+            value={valoresEditar.password ?? ''}
+          />
+        </label>
+
+        <div class="sis-form-grid" id="bloque-rol-estado">
+          <label>
+            Rol
+            <select name="rol_id" id="edit-rol">
+              {listaRoles.map((r) => (
+                <option value={r.id} selected={String(r.id) === valoresEditar.rol_id}>
+                  {r.nombre}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            Estado
+            <select name="activo" id="edit-activo">
+              <option value="1" selected={valoresEditar.activo !== '0'}>Activo</option>
+              <option value="0" selected={valoresEditar.activo === '0'}>Inactivo</option>
+            </select>
+          </label>
+        </div>
+
+        <p id="aviso-propio-usuario" class="sis-muted sis-texto-chico" hidden>
+          Estás editando tu propia cuenta: puedes cambiar tu nombre, correo y contraseña, pero no tu rol ni estado.
+        </p>
+
+        <div class="sis-modal-botones">
+          <button type="submit" class="vet-btn-primary">Guardar cambios</button>
+          <button type="button" id="btn-cancelar-modal-usuario" class="sis-btn-sec">Cancelar</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 
   <div class="sis-grid">
     <form method="post" class="sis-card sis-form">
@@ -132,3 +322,65 @@ const [listaUsuarios, listaRoles] = await Promise.all([
     </div>
   </div>
 </SistemaLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.sis-btn-pass').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const code = btn.parentElement?.querySelector<HTMLElement>('.sis-pass-texto');
+      if (!code) return;
+      const mostrando = btn.dataset.mostrando === 'true';
+      if (mostrando) {
+        code.textContent = '••••••••';
+        btn.textContent = 'Ver';
+        btn.dataset.mostrando = 'false';
+      } else {
+        code.textContent = code.dataset.password ?? '';
+        btn.textContent = 'Ocultar';
+        btn.dataset.mostrando = 'true';
+      }
+    });
+  });
+
+  const modalEditar = document.getElementById('modal-editar-usuario') as HTMLDialogElement | null;
+  const inputId = document.getElementById('edit-id') as HTMLInputElement | null;
+  const inputNombre = document.getElementById('edit-nombre') as HTMLInputElement | null;
+  const inputCorreo = document.getElementById('edit-correo') as HTMLInputElement | null;
+  const inputPassword = document.getElementById('edit-password') as HTMLInputElement | null;
+  const selectRol = document.getElementById('edit-rol') as HTMLSelectElement | null;
+  const selectActivo = document.getElementById('edit-activo') as HTMLSelectElement | null;
+  const bloqueRolEstado = document.getElementById('bloque-rol-estado');
+  const avisoPropio = document.getElementById('aviso-propio-usuario');
+
+  function ajustarCamposPropio(esPropio: boolean) {
+    if (bloqueRolEstado) bloqueRolEstado.hidden = esPropio;
+    if (avisoPropio) avisoPropio.hidden = !esPropio;
+  }
+
+  document.querySelectorAll<HTMLButtonElement>('.btn-editar-usuario').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!modalEditar || !inputId || !inputNombre || !inputCorreo || !inputPassword || !selectRol || !selectActivo) return;
+      inputId.value = btn.dataset.id ?? '';
+      inputNombre.value = btn.dataset.nombre ?? '';
+      inputCorreo.value = btn.dataset.correo ?? '';
+      inputPassword.value = btn.dataset.password ?? '';
+      selectRol.value = btn.dataset.rolId ?? '1';
+      selectActivo.value = btn.dataset.activo ?? '1';
+
+      ajustarCamposPropio(btn.dataset.propio === 'true');
+      modalEditar.showModal();
+    });
+  });
+
+  document.getElementById('btn-cerrar-modal-usuario')?.addEventListener('click', () => modalEditar?.close());
+  document.getElementById('btn-cancelar-modal-usuario')?.addEventListener('click', () => modalEditar?.close());
+
+  modalEditar?.addEventListener('click', (e) => {
+    if (e.target === modalEditar) modalEditar.close();
+  });
+
+  if (modalEditar?.dataset.abrir === 'true') {
+    const esPropio = inputId?.value === modalEditar.dataset.miId;
+    ajustarCamposPropio(esPropio);
+    modalEditar.showModal();
+  }
+</script>

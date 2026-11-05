@@ -13,12 +13,16 @@ const esUsuario = usuario.rol === 'Usuario';
 
 // Pestañas del sistema; cada una aparece solo si el rol tiene el permiso
 const pestanas = esUsuario
-  ? [{ href: '/sistema', texto: 'Bienvenida', visible: true }]
+  ? [
+      { href: '/sistema', texto: 'Inicio', visible: true },
+      { href: '/sistema/citas', texto: 'Citas', visible: true },
+    ]
   : [
       { href: '/sistema', texto: 'Mi perfil', visible: true },
       { href: '/sistema/inventario', texto: 'Inventario', visible: puede(usuario, 'inventario.ver') },
       { href: '/sistema/proveedores', texto: 'Proveedores', visible: puede(usuario, 'inventario.ver') },
       { href: '/sistema/usuarios', texto: 'Usuarios', visible: puede(usuario, 'usuarios.administrar') },
+      { href: '/sistema/citas', texto: 'Citas', visible: puede(usuario, 'citas.administrar') },
     ].filter((p) => p.visible);
 
 const activa = (href: string) => (href === '/sistema' ? path === href : path.startsWith(href));
@@ -42,4 +46,73 @@ const activa = (href: string) => (href === '/sistema' ? path === href : path.sta
       <slot />
     </div>
   </section>
+
+  {!usuario.avisoAceptado && (
+    <dialog id="modal-aviso-privacidad" class="sis-modal sis-modal-aviso" aria-labelledby="titulo-aviso-privacidad">
+      <div class="sis-modal-contenido">
+        <div class="sis-modal-head">
+          <h2 id="titulo-aviso-privacidad">Aviso de Privacidad</h2>
+          <span class="sis-badge sis-badge-aviso">Primer inicio de sesión</span>
+        </div>
+
+        <div class="sis-aviso-texto">
+          <p>
+            <strong>Clínica Veterinaria Puppy and Kitty</strong>, con domicilio en Av. de las Mascotas #123, Col. Del Parque,
+            es responsable del uso y protección de sus datos personales.
+          </p>
+          <p>
+            <strong>1. Datos personales que recabamos:</strong> Nombre completo, correo electrónico, datos de contacto e
+            información relacionada con sus mascotas (nombre, especie, citas y motivos de consulta).
+          </p>
+          <p>
+            <strong>2. Finalidades del tratamiento:</strong> Sus datos serán utilizados exclusivamente para:
+          </p>
+          <ul>
+            <li>Gestionar su cuenta de acceso al sistema de la clínica.</li>
+            <li>Agendar, consultar y dar seguimiento a las citas médicas y servicios de sus mascotas.</li>
+            <li>Emitir comprobantes de citas en formato PDF y mantener el historial de atención.</li>
+          </ul>
+          <p>
+            <strong>3. Protección y derechos ARCO:</strong> Sus datos personales se resguardan bajo estrictas medidas de
+            seguridad y no se comparten con terceros ajenos a la clínica. Usted puede ejercer en cualquier momento sus
+            derechos de Acceso, Rectificación, Cancelación u Oposición (ARCO) solicitándolo en recepción o al correo
+            <strong>contacto@puppyandkitty.com</strong>.
+          </p>
+        </div>
+
+        <form method="post" action="/sistema/aceptar-aviso" class="sis-form">
+          <input type="hidden" name="origen" value={Astro.url.pathname} />
+          <label class="sis-check sis-aviso-check">
+            <input type="checkbox" name="acepto" value="1" id="check-aceptar-aviso" required />
+            <span>He leído y acepto los términos del Aviso de Privacidad de Puppy and Kitty.</span>
+          </label>
+          <div class="sis-modal-botones">
+            <button type="submit" id="btn-aceptar-aviso" class="vet-btn-primary" disabled>
+              Aceptar y continuar
+            </button>
+          </div>
+        </form>
+
+        <form method="post" action="/logout" class="sis-aviso-salir">
+          <button type="submit" class="sis-btn-sec">Rechazar y cerrar sesión</button>
+        </form>
+      </div>
+    </dialog>
+
+    <script>
+      const dialogoAviso = document.getElementById('modal-aviso-privacidad') as HTMLDialogElement | null;
+      const checkAviso = document.getElementById('check-aceptar-aviso') as HTMLInputElement | null;
+      const btnAceptar = document.getElementById('btn-aceptar-aviso') as HTMLButtonElement | null;
+
+      if (dialogoAviso) {
+        dialogoAviso.showModal();
+        // No permitir cerrar con la tecla Escape sin haber aceptado el aviso
+        dialogoAviso.addEventListener('cancel', (e) => e.preventDefault());
+      }
+
+      checkAviso?.addEventListener('change', () => {
+        if (btnAceptar) btnAceptar.disabled = !checkAviso.checked;
+      });
+    </script>
+  )}
 </Layout>
