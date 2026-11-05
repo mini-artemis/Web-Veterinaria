@@ -16,7 +16,7 @@ export const GET: APIRoute = async ({ params, locals }) => {
 
   const cita = await fila<CitaDetallada>(
     `SELECT c.id, c.usuario_id, u.nombre AS cliente_nombre, u.correo AS cliente_correo,
-            c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora, c.creado_en
+            c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora, c.estado, c.creado_en
        FROM citas c
        JOIN usuarios u ON u.id = c.usuario_id
       WHERE c.id = $1`,

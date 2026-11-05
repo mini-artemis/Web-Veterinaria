@@ -1950,6 +1950,16 @@ img {
   gap: 0.5rem;
 }
 
+.sis-input-pass {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sis-input-pass input {
+  flex: 1;
+}
+
 .sis-pass-texto {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.875rem;
@@ -2018,7 +2028,27 @@ img {
 
 .sis-cita-acciones-pdf {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.sis-btn-peligro {
+  border-color: #991b1b;
+  color: #991b1b;
+}
+
+.sis-btn-peligro:hover {
+  background: #fee2e2;
+}
+
+.sis-cita-cancelada .sis-cita-ticket {
+  border-color: #9ca3af;
+  opacity: 0.78;
+}
+
+.sis-cita-cancelada .sis-cita-ticket-head {
+  background: #4b5563;
 }
 
 .sis-cita-ticket {

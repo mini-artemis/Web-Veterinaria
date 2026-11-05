@@ -90,9 +90,27 @@ const avisos = puede(usuario, 'inventario.ver')
             {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
             {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
             <form method="post" class="sis-form">
-              <label>Contraseña actual <input type="password" name="actual" required autocomplete="current-password" /></label>
-              <label>Nueva contraseña <input type="password" name="nueva" required minlength="8" autocomplete="new-password" /></label>
-              <label>Confirmar nueva <input type="password" name="confirmar" required minlength="8" autocomplete="new-password" /></label>
+              <label>
+                Contraseña actual
+                <div class="sis-input-pass">
+                  <input type="password" name="actual" required autocomplete="current-password" />
+                  <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+                </div>
+              </label>
+              <label>
+                Nueva contraseña
+                <div class="sis-input-pass">
+                  <input type="password" name="nueva" required minlength="8" autocomplete="new-password" />
+                  <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+                </div>
+              </label>
+              <label>
+                Confirmar nueva
+                <div class="sis-input-pass">
+                  <input type="password" name="confirmar" required minlength="8" autocomplete="new-password" />
+                  <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+                </div>
+              </label>
               <button type="submit" class="vet-btn-primary">Guardar</button>
             </form>
           </div>
@@ -120,3 +138,19 @@ const avisos = puede(usuario, 'inventario.ver')
     )
   }
 </SistemaLayout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.sis-btn-toggle-input').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = btn.parentElement?.querySelector<HTMLInputElement>('input');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Ver';
+      }
+    });
+  });
+</script>

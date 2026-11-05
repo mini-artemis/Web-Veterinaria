@@ -4,6 +4,7 @@ import SistemaLayout from '../../../layouts/SistemaLayout.astro';
 import logoImg from '../../../assets/logo.png';
 import { puede } from '../../../lib/auth';
 import {
+  ahoraEnMexico,
   especiesCita,
   etiquetaHora,
   formatearFechaCita,
@@ -30,45 +31,70 @@ let error = '';
 let abrirModal = false;
 let valores: Record<string, string> = {};
 
-// Fecha mínima sugerida (hoy en zona horaria de México)
-const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+// Fecha mínima permitida (hoy en zona horaria de México)
+const { fecha: hoy } = ahoraEnMexico();
 
 if (Astro.request.method === 'POST') {
   const datos = await Astro.request.formData();
-  const leido = leerCita(datos);
-  const clienteId = esAdmin ? entero(datos, 'usuario_id') : usuario.id;
+  const accion = texto(datos, 'accion');
 
-  valores = {
-    usuario_id: texto(datos, 'usuario_id'),
-    mascota: texto(datos, 'mascota'),
-    especie: texto(datos, 'especie'),
-    servicio: texto(datos, 'servicio'),
-    fecha: texto(datos, 'fecha'),
-    hora: texto(datos, 'hora'),
-    notas: texto(datos, 'notas'),
-  };
-
-  if (leido.error) {
-    error = leido.error;
-    abrirModal = true;
-  } else if (!Number.isInteger(clienteId) || clienteId <= 0) {
-    error = 'Selecciona el cliente para la cita.';
-    abrirModal = true;
-  } else {
-    const c = leido.cita!;
-    try {
-      await consulta(
-        `INSERT INTO citas (usuario_id, mascota, especie, servicio, notas, fecha, hora)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-        [clienteId, c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora],
+  if (accion === 'cancelar') {
+    const citaId = entero(datos, 'id');
+    if (!Number.isInteger(citaId) || citaId <= 0) {
+      error = 'Cita no válida.';
+    } else {
+      const canceladas = await consulta<{ id: number; mascota: string; fecha: string; hora: string }>(
+        `UPDATE citas
+            SET estado = 'cancelada'
+          WHERE id = $1
+            AND ($2 OR usuario_id = $3)
+            AND estado = 'programada'
+        RETURNING id, mascota, fecha, hora`,
+        [citaId, esAdmin, usuario.id],
       );
-      mensaje = `Cita agendada para ${c.mascota} el ${c.fecha} a las ${etiquetaHora(c.hora)}.`;
-      valores = {};
-    } catch (e) {
+      if (canceladas.length > 0) {
+        const c = canceladas[0];
+        mensaje = `La cita de ${c.mascota} (${c.fecha} a las ${etiquetaHora(c.hora)}) fue cancelada y el horario quedó libre.`;
+      } else {
+        error = 'No se pudo cancelar la cita o ya estaba cancelada.';
+      }
+    }
+  } else {
+    const leido = leerCita(datos);
+    const clienteId = esAdmin ? entero(datos, 'usuario_id') : usuario.id;
+
+    valores = {
+      usuario_id: texto(datos, 'usuario_id'),
+      mascota: texto(datos, 'mascota'),
+      especie: texto(datos, 'especie'),
+      servicio: texto(datos, 'servicio'),
+      fecha: texto(datos, 'fecha'),
+      hora: texto(datos, 'hora'),
+      notas: texto(datos, 'notas'),
+    };
+
+    if (leido.error) {
+      error = leido.error;
       abrirModal = true;
-      error = esDuplicado(e)
-        ? `El día ${c.fecha} a las ${etiquetaHora(c.hora)} ya está ocupado. Elige otro día u horario.`
-        : 'No se pudo guardar la cita.';
+    } else if (!Number.isInteger(clienteId) || clienteId <= 0) {
+      error = 'Selecciona el cliente para la cita.';
+      abrirModal = true;
+    } else {
+      const c = leido.cita!;
+      try {
+        await consulta(
+          `INSERT INTO citas (usuario_id, mascota, especie, servicio, notas, fecha, hora, estado)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 'programada')`,
+          [clienteId, c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora],
+        );
+        mensaje = `Cita agendada para ${c.mascota} el ${c.fecha} a las ${etiquetaHora(c.hora)}.`;
+        valores = {};
+      } catch (e) {
+        abrirModal = true;
+        error = esDuplicado(e)
+          ? `El día ${c.fecha} a las ${etiquetaHora(c.hora)} ya está ocupado. Elige otro día u horario.`
+          : 'No se pudo guardar la cita.';
+      }
     }
   }
 }
@@ -77,15 +103,17 @@ if (Astro.request.method === 'POST') {
 const [citas, ocupadas, clientes] = await Promise.all([
   consulta<CitaDetallada>(
     `SELECT c.id, c.usuario_id, u.nombre AS cliente_nombre, u.correo AS cliente_correo,
-            c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora, c.creado_en
+            c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora, c.estado, c.creado_en
        FROM citas c
        JOIN usuarios u ON u.id = c.usuario_id
       WHERE ($1 OR c.usuario_id = $2)
-      ORDER BY c.fecha DESC, c.hora ASC`,
+      ORDER BY (c.estado = 'programada') DESC, c.fecha DESC, c.hora ASC`,
     [esAdmin, usuario.id],
   ),
-  // Todos los horarios ya ocupados para deshabilitarlos en el selector de fecha y hora
-  consulta<{ fecha: string; hora: string }>('SELECT fecha, hora FROM citas WHERE fecha >= current_date - 1'),
+  // Solo las citas activas ('programada') ocupan horario
+  consulta<{ fecha: string; hora: string }>(
+    "SELECT fecha, hora FROM citas WHERE estado = 'programada' AND fecha >= current_date - 1",
+  ),
   esAdmin
     ? consulta<{ id: number; nombre: string; correo: string; rol: string }>(
         `SELECT u.id, u.nombre, u.correo, r.nombre AS rol
@@ -114,7 +142,7 @@ for (const o of ocupadas) {
         <p class="sis-muted">
           {citas.length === 0
             ? 'Todavía no hay citas registradas.'
-            : `${citas.length} cita(s) registrada(s). Los horarios ocupados se bloquean automáticamente.`}
+            : `${citas.length} cita(s) registrada(s). Los horarios ocupados o pasados se bloquean automáticamente.`}
         </p>
       </div>
       <button type="button" id="btn-abrir-modal-cita" class="vet-btn-primary">
@@ -133,36 +161,60 @@ for (const o of ocupadas) {
               <th scope="col">Servicio</th>
               <th scope="col">Fecha</th>
               <th scope="col">Hora</th>
-              <th scope="col">Reporte</th>
+              <th scope="col">Estado</th>
+              <th scope="col">Acciones</th>
             </tr>
           </thead>
           <tbody>
-            {citas.map((c) => (
-              <tr>
-                <td><strong>PK-{String(c.id).padStart(4, '0')}</strong></td>
-                <td>
-                  {c.cliente_nombre}
-                  <div class="sis-muted sis-texto-chico">{c.cliente_correo}</div>
-                </td>
-                <td>
-                  {c.mascota} <span class="sis-badge sis-badge-ok">{c.especie}</span>
-                </td>
-                <td>
-                  {c.servicio}
-                  {c.notas && <div class="sis-muted sis-texto-chico">{c.notas}</div>}
-                </td>
-                <td>{c.fecha}</td>
-                <td>{etiquetaHora(c.hora)}</td>
-                <td>
-                  <a href={`/sistema/citas/${c.id}/pdf`} class="sis-btn-sec sis-btn-link" download>
-                    Descargar PDF
-                  </a>
-                </td>
-              </tr>
-            ))}
+            {citas.map((c) => {
+              const cancelada = c.estado === 'cancelada';
+              return (
+                <tr class:list={{ 'sis-inactivo': cancelada }}>
+                  <td><strong>PK-{String(c.id).padStart(4, '0')}</strong></td>
+                  <td>
+                    {c.cliente_nombre}
+                    <div class="sis-muted sis-texto-chico">{c.cliente_correo}</div>
+                  </td>
+                  <td>
+                    {c.mascota} <span class="sis-badge sis-badge-ok">{c.especie}</span>
+                  </td>
+                  <td>
+                    {c.servicio}
+                    {c.notas && <div class="sis-muted sis-texto-chico">{c.notas}</div>}
+                  </td>
+                  <td>{c.fecha}</td>
+                  <td>{etiquetaHora(c.hora)}</td>
+                  <td>
+                    <span class:list={['sis-badge', cancelada ? 'sis-badge-alerta' : 'sis-badge-ok']}>
+                      {cancelada ? 'Cancelada' : 'Programada'}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="sis-inline">
+                      <a href={`/sistema/citas/${c.id}/pdf`} class="sis-btn-sec sis-btn-link" download>
+                        Descargar PDF
+                      </a>
+                      {!cancelada && (
+                        <form
+                          method="post"
+                          class="sis-inline form-cancelar-cita"
+                          data-mascota={c.mascota}
+                        >
+                          <input type="hidden" name="accion" value="cancelar" />
+                          <input type="hidden" name="id" value={c.id} />
+                          <button type="submit" class="sis-btn-sec sis-btn-peligro">
+                            Cancelar
+                          </button>
+                        </form>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
             {citas.length === 0 && (
               <tr>
-                <td colspan="7" class="sis-muted">No hay citas agendadas todavía. Usa el botón "+ Nueva" para registrar una.</td>
+                <td colspan="8" class="sis-muted">No hay citas agendadas todavía. Usa el botón "+ Nueva" para registrar una.</td>
               </tr>
             )}
           </tbody>
@@ -170,45 +222,65 @@ for (const o of ocupadas) {
       </div>
     ) : (
       <div class="sis-citas-tarjetas">
-        {citas.map((c) => (
-          <article class="sis-cita-bloque">
-            <div class="sis-cita-acciones-pdf">
-              <a href={`/sistema/citas/${c.id}/pdf`} class="vet-btn-primary sis-btn-link" download>
-                Descargar PDF
-              </a>
-            </div>
-            <div class="sis-cita-ticket">
-              <header class="sis-cita-ticket-head">
-                <div>
-                  <strong>Puppy and Kitty</strong>
-                  <span>Folio PK-{String(c.id).padStart(4, '0')}</span>
-                </div>
-                <Image src={logoImg} alt="Logo Puppy and Kitty" width={40} height={40} class="sis-cita-ticket-logo" />
-              </header>
-              <dl class="sis-datos sis-cita-ticket-body">
-                <dt>Cliente</dt>
-                <dd>{c.cliente_nombre}</dd>
-                <dt>Mascota</dt>
-                <dd>{c.mascota} ({c.especie})</dd>
-                <dt>Servicio</dt>
-                <dd>{c.servicio}</dd>
-                <dt>Fecha</dt>
-                <dd>{formatearFechaCita(c.fecha)}</dd>
-                <dt>Hora</dt>
-                <dd>{etiquetaHora(c.hora)}</dd>
-                {c.notas && (
-                  <>
-                    <dt>Notas</dt>
-                    <dd>{c.notas}</dd>
-                  </>
+        {citas.map((c) => {
+          const cancelada = c.estado === 'cancelada';
+          return (
+            <article class:list={['sis-cita-bloque', { 'sis-cita-cancelada': cancelada }]}>
+              <div class="sis-cita-acciones-pdf">
+                <a href={`/sistema/citas/${c.id}/pdf`} class="vet-btn-primary sis-btn-link" download>
+                  Descargar PDF
+                </a>
+                {!cancelada && (
+                  <form method="post" class="sis-inline form-cancelar-cita" data-mascota={c.mascota}>
+                    <input type="hidden" name="accion" value="cancelar" />
+                    <input type="hidden" name="id" value={c.id} />
+                    <button type="submit" class="sis-btn-sec sis-btn-peligro">
+                      Cancelar cita
+                    </button>
+                  </form>
                 )}
-              </dl>
-              <footer class="sis-cita-ticket-foot">
-                Av. de las Mascotas #123, Col. Del Parque · Presentar 10 min antes
-              </footer>
-            </div>
-          </article>
-        ))}
+              </div>
+              <div class="sis-cita-ticket">
+                <header class="sis-cita-ticket-head">
+                  <div>
+                    <strong>Puppy and Kitty</strong>
+                    <span>
+                      Folio PK-{String(c.id).padStart(4, '0')} · {cancelada ? 'CANCELADA' : 'PROGRAMADA'}
+                    </span>
+                  </div>
+                  <Image src={logoImg} alt="Logo Puppy and Kitty" width={40} height={40} class="sis-cita-ticket-logo" />
+                </header>
+                <dl class="sis-datos sis-cita-ticket-body">
+                  <dt>Estado</dt>
+                  <dd>
+                    <span class:list={['sis-badge', cancelada ? 'sis-badge-alerta' : 'sis-badge-ok']}>
+                      {cancelada ? 'Cancelada' : 'Programada'}
+                    </span>
+                  </dd>
+                  <dt>Cliente</dt>
+                  <dd>{c.cliente_nombre}</dd>
+                  <dt>Mascota</dt>
+                  <dd>{c.mascota} ({c.especie})</dd>
+                  <dt>Servicio</dt>
+                  <dd>{c.servicio}</dd>
+                  <dt>Fecha</dt>
+                  <dd>{formatearFechaCita(c.fecha)}</dd>
+                  <dt>Hora</dt>
+                  <dd>{etiquetaHora(c.hora)}</dd>
+                  {c.notas && (
+                    <>
+                      <dt>Notas</dt>
+                      <dd>{c.notas}</dd>
+                    </>
+                  )}
+                </dl>
+                <footer class="sis-cita-ticket-foot">
+                  Av. de las Mascotas #123, Col. Del Parque · Presentar 10 min antes
+                </footer>
+              </div>
+            </article>
+          );
+        })}
       </div>
     )}
   </div>
@@ -223,9 +295,10 @@ for (const o of ocupadas) {
         </button>
       </div>
 
-      {error && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+      {error && abrirModal && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
 
       <form method="post" class="sis-form" id="form-nueva-cita">
+        <input type="hidden" name="accion" value="crear" />
         {esAdmin && (
           <label>
             Cliente
@@ -325,20 +398,43 @@ for (const o of ocupadas) {
   const ocupadasJson = document.getElementById('datos-ocupadas')?.textContent ?? '{}';
   const mapaOcupadas: Record<string, string[]> = JSON.parse(ocupadasJson);
 
+  function obtenerAhoraMexico() {
+    const ahora = new Date();
+    const fechaHoy = ahora.toLocaleDateString('en-CA', { timeZone: 'America/Mexico_City' });
+    const horaActual = ahora.toLocaleTimeString('en-GB', {
+      timeZone: 'America/Mexico_City',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return { fechaHoy, horaActual };
+  }
+
   function actualizarHorasDisponibles() {
     if (!inputFecha || !selectHora) return;
     const fecha = inputFecha.value;
+    const { fechaHoy, horaActual } = obtenerAhoraMexico();
     const ocupadasDelDia = new Set(mapaOcupadas[fecha] ?? []);
     let disponibles = 0;
+    let pasadas = 0;
     let primeraDisponible = '';
 
     for (const opcion of Array.from(selectHora.options)) {
-      const etiquetaBase = opcion.dataset.etiquetaBase ?? opcion.textContent?.replace(' (Ocupado)', '').trim() ?? '';
+      const etiquetaBase =
+        opcion.dataset.etiquetaBase ??
+        opcion.textContent?.replace(/ \((Ocupado|Ya pasó)\)$/, '').trim() ??
+        '';
       opcion.dataset.etiquetaBase = etiquetaBase;
+
+      const yaPaso = fecha < fechaHoy || (fecha === fechaHoy && opcion.value <= horaActual);
 
       if (ocupadasDelDia.has(opcion.value)) {
         opcion.disabled = true;
         opcion.textContent = `${etiquetaBase} (Ocupado)`;
+      } else if (yaPaso) {
+        opcion.disabled = true;
+        opcion.textContent = `${etiquetaBase} (Ya pasó)`;
+        pasadas++;
       } else {
         opcion.disabled = false;
         opcion.textContent = etiquetaBase;
@@ -353,10 +449,13 @@ for (const o of ocupadas) {
 
     if (avisoHorario && btnGuardar) {
       if (disponibles === 0) {
-        avisoHorario.textContent = 'Todos los horarios de este día ya están ocupados. Por favor elige otra fecha.';
+        avisoHorario.textContent =
+          fecha === fechaHoy && pasadas > 0 && ocupadasDelDia.size === 0
+            ? 'Ya pasaron todos los horarios de atención de hoy. Por favor elige otro día.'
+            : 'No quedan horarios disponibles en esta fecha (ocupados o ya pasaron). Por favor elige otro día.';
         btnGuardar.disabled = true;
-      } else if (ocupadasDelDia.size > 0) {
-        avisoHorario.textContent = `${ocupadasDelDia.size} horario(s) ocupado(s) en esta fecha no están disponibles.`;
+      } else if (ocupadasDelDia.size > 0 || pasadas > 0) {
+        avisoHorario.textContent = `Horarios disponibles: ${disponibles}. Los horarios pasados u ocupados están bloqueados.`;
         btnGuardar.disabled = false;
       } else {
         avisoHorario.textContent = 'Todos los horarios están disponibles para esta fecha.';
@@ -384,4 +483,14 @@ for (const o of ocupadas) {
   if (modal?.dataset.abrir === 'true') {
     modal.showModal();
   }
+
+  // Confirmación antes de cancelar una cita
+  document.querySelectorAll<HTMLFormElement>('.form-cancelar-cita').forEach((form) => {
+    form.addEventListener('submit', (e) => {
+      const mascota = form.dataset.mascota ?? 'esta mascota';
+      if (!confirm(`¿Seguro que deseas cancelar la cita de ${mascota}?`)) {
+        e.preventDefault();
+      }
+    });
+  });
 </script>
