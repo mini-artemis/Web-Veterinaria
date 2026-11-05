@@ -171,20 +171,16 @@ const [listaUsuarios, listaRoles] = await Promise.all([
               <td>{u.nombre}</td>
               <td>{u.correo}</td>
               <td>
-                {u.password_visible ? (
-                  <div class="sis-pass-celda">
-                    <code class="sis-pass-texto" data-password={u.password_visible}>••••••••</code>
-                    <button
-                      type="button"
-                      class="sis-btn-sec sis-btn-pass"
-                      aria-label={`Mostrar contraseña de ${u.nombre}`}
-                    >
-                      Ver
-                    </button>
-                  </div>
-                ) : (
-                  <span class="sis-muted">••••••••</span>
-                )}
+                <div class="sis-pass-celda">
+                  <code class="sis-pass-texto" data-password={u.password_visible ?? ''}>••••••••</code>
+                  <button
+                    type="button"
+                    class="sis-btn-sec sis-btn-pass"
+                    aria-label={`Mostrar contraseña de ${u.nombre}`}
+                  >
+                    Ver
+                  </button>
+                </div>
               </td>
               <td>
                 {u.id === usuario.id ? u.rol : (
@@ -258,15 +254,18 @@ const [listaUsuarios, listaRoles] = await Promise.all([
 
         <label>
           Contraseña (dejar igual o escribir una nueva, mín. 8 caracteres)
-          <input
-            type="text"
-            name="password"
-            id="edit-password"
-            minlength="8"
-            autocomplete="off"
-            placeholder="Dejar en blanco para no cambiarla"
-            value={valoresEditar.password ?? ''}
-          />
+          <div class="sis-input-pass">
+            <input
+              type="password"
+              name="password"
+              id="edit-password"
+              minlength="8"
+              autocomplete="new-password"
+              placeholder="Dejar en blanco para no cambiarla"
+              value={valoresEditar.password ?? ''}
+            />
+            <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+          </div>
         </label>
 
         <div class="sis-form-grid" id="bloque-rol-estado">
@@ -308,7 +307,13 @@ const [listaUsuarios, listaRoles] = await Promise.all([
       <input type="hidden" name="accion" value="crear" />
       <label>Nombre <input name="nombre" required maxlength="80" /></label>
       <label>Correo <input type="email" name="correo" required autocomplete="off" /></label>
-      <label>Contraseña inicial <input type="password" name="password" required minlength="8" autocomplete="new-password" /></label>
+      <label>
+        Contraseña inicial
+        <div class="sis-input-pass">
+          <input type="password" name="password" required minlength="8" autocomplete="new-password" />
+          <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+        </div>
+      </label>
       <label>
         Rol
         <select name="rol_id">{listaRoles.map((r) => <option value={r.id}>{r.nombre}</option>)}</select>
@@ -334,9 +339,24 @@ const [listaUsuarios, listaRoles] = await Promise.all([
         btn.textContent = 'Ver';
         btn.dataset.mostrando = 'false';
       } else {
-        code.textContent = code.dataset.password ?? '';
+        const guardada = code.dataset.password ?? '';
+        code.textContent = guardada || 'Sin registrar (usa Editar o inicia sesión)';
         btn.textContent = 'Ocultar';
         btn.dataset.mostrando = 'true';
+      }
+    });
+  });
+
+  document.querySelectorAll<HTMLButtonElement>('.sis-btn-toggle-input').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = btn.parentElement?.querySelector<HTMLInputElement>('input');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Ver';
       }
     });
   });

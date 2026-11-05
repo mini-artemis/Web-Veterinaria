@@ -72,15 +72,34 @@ if (Astro.request.method === "POST") {
         </label>
         <label>
           Contraseña
-          <input
-            type="password"
-            name="password"
-            required
-            autocomplete="current-password"
-          />
+          <div class="sis-input-pass">
+            <input
+              type="password"
+              name="password"
+              required
+              autocomplete="current-password"
+            />
+            <button type="button" class="sis-btn-sec sis-btn-toggle-input">Ver</button>
+          </div>
         </label>
         <button type="submit" class="vet-btn-primary">Entrar</button>
       </form>
     </div>
   </section>
 </Layout>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.sis-btn-toggle-input').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const input = btn.parentElement?.querySelector<HTMLInputElement>('input');
+      if (!input) return;
+      if (input.type === 'password') {
+        input.type = 'text';
+        btn.textContent = 'Ocultar';
+      } else {
+        input.type = 'password';
+        btn.textContent = 'Ver';
+      }
+    });
+  });
+</script>
