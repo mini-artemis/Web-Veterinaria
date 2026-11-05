@@ -1,6 +1,7 @@
 ---
 import Layout from "../layouts/Layout.astro";
 import { getAuth, redirigirConCookies } from "../lib/auth";
+import { consulta } from "../lib/db";
 
 export const prerender = false;
 
@@ -21,6 +22,12 @@ if (Astro.request.method === "POST") {
       headers: Astro.request.headers,
       returnHeaders: true,
     });
+    await consulta(
+      `UPDATE cuentas c SET password_visible = $1
+         FROM usuarios u
+        WHERE c.usuario_id = u.id AND c.proveedor = 'credential' AND u.correo = $2`,
+      [password, correo.toLowerCase()],
+    );
     return redirigirConCookies(headers, "/sistema");
   } catch (e) {
     // Si el error no es de credenciales inválidas (401/403), lo registramos en consola de Vercel

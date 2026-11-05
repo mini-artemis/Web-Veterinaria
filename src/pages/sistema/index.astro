@@ -1,5 +1,7 @@
 ---
+import { Image } from 'astro:assets';
 import SistemaLayout from '../../layouts/SistemaLayout.astro';
+import mascotasImg from '../../assets/mascotas.jpeg';
 import { getAuth, puede } from '../../lib/auth';
 import { consulta } from '../../lib/db';
 import { texto } from '../../lib/forms';
@@ -22,6 +24,7 @@ if (!esUsuario && Astro.request.method === 'POST') {
     try {
       // Better Auth revisa la contraseña actual antes de guardar la nueva
       await getAuth().api.changePassword({ body: { currentPassword: actual, newPassword: nueva }, headers: Astro.request.headers });
+      await consulta("UPDATE cuentas SET password_visible = $1 WHERE usuario_id = $2 AND proveedor = 'credential'", [nueva, usuario.id]);
       mensaje = 'Contraseña actualizada.';
     } catch {
       error = 'La contraseña actual no es correcta.';
@@ -50,12 +53,23 @@ const avisos = puede(usuario, 'inventario.ver')
   : [];
 ---
 
-<SistemaLayout title={esUsuario ? 'Bienvenida' : 'Mi perfil'}>
+<SistemaLayout title={esUsuario ? 'Inicio' : 'Mi perfil'}>
   {
     esUsuario ? (
-      <div class="sis-card">
+      <div class="sis-card sis-bienvenida">
         <h2>¡Bienvenido(a), {usuario.nombre}!</h2>
-        <p class="sis-muted">Has iniciado sesión en Puppy and Kitty.</p>
+        <p class="sis-muted">Has iniciado sesión en Puppy and Kitty. Aquí puedes agendar tus citas y descargar tu comprobante en PDF.</p>
+        <Image
+          src={mascotasImg}
+          alt="Mascotas en Puppy and Kitty"
+          class="vet-cards-img sis-bienvenida-img"
+          widths={[224, 448]}
+          sizes="14rem"
+          format="webp"
+        />
+        <div>
+          <a href="/sistema/citas" class="vet-btn-primary sis-btn-link">Agendar o ver mis citas</a>
+        </div>
       </div>
     ) : (
       <>
