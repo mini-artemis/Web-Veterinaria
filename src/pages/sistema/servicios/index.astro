@@ -1,0 +1,565 @@
+---
+import SistemaLayout from '../../../layouts/SistemaLayout.astro';
+import { puede } from '../../../lib/auth';
+import { consulta } from '../../../lib/db';
+import { entero, pesos, texto } from '../../../lib/forms';
+import {
+  asegurarTablaServicios,
+  categoriasServicio,
+  especiesServicio,
+  formatearDuracion,
+  leerServicio,
+  listarServicios,
+  mensajeErrorServicio,
+  serviciosIniciales,
+} from '../../../lib/servicios';
+
+export const prerender = false;
+
+const usuario = Astro.locals.usuario!;
+if (!puede(usuario, 'inventario.ver') && usuario.rol !== 'Administrador') {
+  return new Response('No tienes permiso para ver el catálogo de servicios.', { status: 403 });
+}
+
+const puedeEditar = puede(usuario, 'inventario.editar') || puede(usuario, 'usuarios.administrar') || usuario.rol === 'Administrador';
+
+let mensaje = '';
+let error = '';
+let abrirModalNuevo = false;
+let abrirModalEditar = false;
+let valoresForm: Record<string, string> = {};
+
+await asegurarTablaServicios();
+
+if (Astro.request.method === 'POST' && puedeEditar) {
+  const datos = await Astro.request.formData();
+  const accion = texto(datos, 'accion');
+
+  if (accion === 'crear') {
+    const leido = leerServicio(datos);
+    valoresForm = {
+      codigo: texto(datos, 'codigo'),
+      nombre: texto(datos, 'nombre'),
+      categoria: texto(datos, 'categoria'),
+      icono: texto(datos, 'icono') || '🩺',
+      descripcion: texto(datos, 'descripcion'),
+      especies: texto(datos, 'especies'),
+      duracion_min: texto(datos, 'duracion_min'),
+      precio: texto(datos, 'precio'),
+    };
+
+    if (leido.error) {
+      error = leido.error;
+      abrirModalNuevo = true;
+    } else {
+      const s = leido.servicio!;
+      try {
+        await consulta(
+          `INSERT INTO servicios (codigo, nombre, categoria, icono, descripcion, especies, duracion_min, precio, activo)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+          [s.codigo, s.nombre, s.categoria, s.icono, s.descripcion, s.especies, s.duracion_min, s.precio],
+        );
+        mensaje = `Servicio "${s.nombre}" (${s.codigo}) registrado correctamente.`;
+        valoresForm = {};
+      } catch (e) {
+        error = mensajeErrorServicio(e);
+        abrirModalNuevo = true;
+      }
+    }
+  } else if (accion === 'editar') {
+    const id = entero(datos, 'id');
+    const leido = leerServicio(datos);
+    valoresForm = {
+      id: String(id),
+      codigo: texto(datos, 'codigo'),
+      nombre: texto(datos, 'nombre'),
+      categoria: texto(datos, 'categoria'),
+      icono: texto(datos, 'icono') || '🩺',
+      descripcion: texto(datos, 'descripcion'),
+      especies: texto(datos, 'especies'),
+      duracion_min: texto(datos, 'duracion_min'),
+      precio: texto(datos, 'precio'),
+      activo: texto(datos, 'activo') || '1',
+    };
+
+    if (!Number.isInteger(id) || id <= 0) {
+      error = 'Servicio no válido.';
+    } else if (leido.error) {
+      error = leido.error;
+      abrirModalEditar = true;
+    } else {
+      const s = leido.servicio!;
+      try {
+        await consulta(
+          `UPDATE servicios
+              SET codigo = $1,
+                  nombre = $2,
+                  categoria = $3,
+                  icono = $4,
+                  descripcion = $5,
+                  especies = $6,
+                  duracion_min = $7,
+                  precio = $8,
+                  activo = $9,
+                  actualizado_en = now()
+            WHERE id = $10`,
+          [s.codigo, s.nombre, s.categoria, s.icono, s.descripcion, s.especies, s.duracion_min, s.precio, s.activo, id],
+        );
+        mensaje = `Servicio "${s.nombre}" actualizado correctamente.`;
+        valoresForm = {};
+      } catch (e) {
+        error = mensajeErrorServicio(e);
+        abrirModalEditar = true;
+      }
+    }
+  } else if (accion === 'estado') {
+    const id = entero(datos, 'id');
+    if (Number.isInteger(id) && id > 0) {
+      await consulta('UPDATE servicios SET activo = NOT activo, actualizado_en = now() WHERE id = $1', [id]);
+      mensaje = 'Estado del servicio actualizado.';
+    }
+  }
+}
+
+// Filtros de búsqueda (?q=...&categoria=...&especie=...&bajas=1&vista=...)
+const q = Astro.url.searchParams.get('q')?.trim() ?? '';
+const categoria = Astro.url.searchParams.get('categoria')?.trim() ?? '';
+const especie = Astro.url.searchParams.get('especie')?.trim() ?? '';
+const verBajas = Astro.url.searchParams.get('bajas') === '1';
+const vista = Astro.url.searchParams.get('vista') === 'tarjetas' ? 'tarjetas' : 'tabla';
+
+const [lista, todos] = await Promise.all([
+  listarServicios({ q, categoria, especie, verBajas }),
+  listarServicios({ verBajas: true }),
+]);
+
+const totalServicios = todos.length || serviciosIniciales.length;
+const totalActivos = todos.filter((s) => s.activo).length;
+const sugerenciaCodigo = `SRV-${String(totalServicios + 1).padStart(3, '0')}`;
+---
+
+<SistemaLayout title="Catálogo de servicios veterinarios">
+  {mensaje && <p class="sis-alerta sis-alerta-ok" role="status">{mensaje}</p>}
+  {error && !abrirModalNuevo && !abrirModalEditar && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+
+  <!-- Tarjetas de resumen del apartado de servicios -->
+  <div class="sis-servicios-resumen">
+    <div class="sis-card sis-resumen-item">
+      <span class="sis-resumen-etiqueta">Total de servicios</span>
+      <strong class="sis-resumen-numero">{totalServicios}</strong>
+      <span class="sis-muted sis-texto-chico">{totalActivos} activos en clínica</span>
+    </div>
+    <div class="sis-card sis-resumen-item">
+      <span class="sis-resumen-etiqueta">Áreas médicas</span>
+      <strong class="sis-resumen-numero">{categoriasServicio.length}</strong>
+      <span class="sis-muted sis-texto-chico">Consulta, cirugía, laboratorio, estética y urgencias</span>
+    </div>
+    <div class="sis-card sis-resumen-item">
+      <span class="sis-resumen-etiqueta">Mostrando ahora</span>
+      <strong class="sis-resumen-numero">{lista.length}</strong>
+      <span class="sis-muted sis-texto-chico">
+        {q || categoria || especie ? 'Resultados con filtros aplicados' : 'Catálogo completo de la veterinaria'}
+      </span>
+    </div>
+  </div>
+
+  <!-- Barra de búsqueda, filtros y acciones -->
+  <div class="sis-acciones">
+    <form method="get" class="sis-filtros" role="search">
+      <input type="hidden" name="vista" value={vista} />
+      <label>
+        Buscar
+        <input type="search" name="q" value={q} placeholder="Nombre, código o descripción..." />
+      </label>
+      <label>
+        Categoría
+        <select name="categoria">
+          <option value="">Todas ({categoriasServicio.length})</option>
+          {categoriasServicio.map((cat) => (
+            <option value={cat} selected={cat === categoria}>{cat}</option>
+          ))}
+        </select>
+      </label>
+      <label>
+        Especie
+        <select name="especie">
+          <option value="">Todas</option>
+          <option value="Perros" selected={especie === 'Perros'}>Perros</option>
+          <option value="Gatos" selected={especie === 'Gatos'}>Gatos</option>
+          <option value="pequeñas especies" selected={especie === 'pequeñas especies'}>Pequeñas especies</option>
+        </select>
+      </label>
+      <label class="sis-check">
+        <input type="checkbox" name="bajas" value="1" checked={verBajas} /> Incluir inactivos
+      </label>
+      <button type="submit" class="sis-btn-sec">Filtrar</button>
+      {(q || categoria || especie || verBajas) && (
+        <a href={`/sistema/servicios?vista=${vista}`} class="sis-btn-sec sis-btn-link">Limpiar</a>
+      )}
+    </form>
+
+    <div class="sis-inline">
+      <a
+        href={`/sistema/servicios?${new URLSearchParams({ ...(q && { q }), ...(categoria && { categoria }), ...(especie && { especie }), ...(verBajas && { bajas: '1' }), vista: vista === 'tabla' ? 'tarjetas' : 'tabla' }).toString()}`}
+        class="sis-btn-sec sis-btn-link"
+      >
+        {vista === 'tabla' ? 'Ver como tarjetas' : 'Ver como tabla'}
+      </a>
+      {puedeEditar && (
+        <button type="button" id="btn-abrir-nuevo-servicio" class="vet-btn-primary">
+          + Nuevo servicio
+        </button>
+      )}
+    </div>
+  </div>
+
+  {vista === 'tarjetas' ? (
+    <div class="sis-servicios-grid">
+      {lista.map((s) => (
+        <article class:list={['sis-card sis-servicio-card', { 'sis-inactivo': !s.activo }]}>
+          <div class="sis-servicio-card-top">
+            <span class="sis-servicio-icono" aria-hidden="true">{s.icono}</span>
+            <div class="sis-servicio-card-meta">
+              <span class="sis-servicio-codigo">{s.codigo}</span>
+              <span class="sis-badge sis-badge-ok">{s.categoria}</span>
+              {!s.activo && <span class="sis-badge sis-badge-alerta">Inactivo</span>}
+            </div>
+          </div>
+          <h3>{s.nombre}</h3>
+          <p class="sis-muted">{s.descripcion}</p>
+          <dl class="sis-datos sis-servicio-detalles">
+            <dt>Especies</dt>
+            <dd>{s.especies}</dd>
+            <dt>Duración est.</dt>
+            <dd>{formatearDuracion(s.duracion_min)}</dd>
+            <dt>Precio</dt>
+            <dd><strong class="sis-servicio-precio">{pesos(s.precio)}</strong></dd>
+          </dl>
+          {puedeEditar && (
+            <div class="sis-servicio-card-acciones">
+              <button
+                type="button"
+                class="sis-btn-sec btn-editar-servicio"
+                data-id={s.id}
+                data-codigo={s.codigo}
+                data-nombre={s.nombre}
+                data-categoria={s.categoria}
+                data-icono={s.icono}
+                data-descripcion={s.descripcion}
+                data-especies={s.especies}
+                data-duracion={s.duracion_min}
+                data-precio={s.precio}
+                data-activo={s.activo ? '1' : '0'}
+              >
+                Editar
+              </button>
+              <form method="post" class="sis-inline">
+                <input type="hidden" name="accion" value="estado" />
+                <input type="hidden" name="id" value={s.id} />
+                <button type="submit" class="sis-btn-sec">
+                  {s.activo ? 'Desactivar' : 'Activar'}
+                </button>
+              </form>
+            </div>
+          )}
+        </article>
+      ))}
+      {lista.length === 0 && (
+        <div class="sis-card">
+          <p class="sis-muted">No se encontraron servicios con los filtros seleccionados.</p>
+        </div>
+      )}
+    </div>
+  ) : (
+    <div class="sis-card">
+      <div class="sis-tabla-wrap">
+        <table class="sis-tabla">
+          <caption class="sis-muted">{lista.length} servicio(s) veterinario(s)</caption>
+          <thead>
+            <tr>
+              <th scope="col">Código</th>
+              <th scope="col">Servicio y descripción</th>
+              <th scope="col">Categoría</th>
+              <th scope="col">Especies</th>
+              <th scope="col">Duración</th>
+              <th scope="col">Precio</th>
+              <th scope="col">Estado</th>
+              {puedeEditar && <th scope="col">Acciones</th>}
+            </tr>
+          </thead>
+          <tbody>
+            {lista.map((s) => (
+              <tr class:list={{ 'sis-inactivo': !s.activo }}>
+                <td><strong>{s.codigo}</strong></td>
+                <td>
+                  <div class="sis-servicio-celda">
+                    <span class="sis-servicio-icono" aria-hidden="true">{s.icono}</span>
+                    <div>
+                      <strong>{s.nombre}</strong>
+                      <div class="sis-muted sis-texto-chico">{s.descripcion}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="sis-badge sis-badge-ok sis-badge-sin-margen">{s.categoria}</span></td>
+                <td>{s.especies}</td>
+                <td>{formatearDuracion(s.duracion_min)}</td>
+                <td><strong class="sis-servicio-precio">{pesos(s.precio)}</strong></td>
+                <td>
+                  <span class:list={['sis-badge sis-badge-sin-margen', s.activo ? 'sis-badge-ok' : 'sis-badge-alerta']}>
+                    {s.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </td>
+                {puedeEditar && (
+                  <td>
+                    <div class="sis-inline">
+                      <button
+                        type="button"
+                        class="sis-btn-sec btn-editar-servicio"
+                        data-id={s.id}
+                        data-codigo={s.codigo}
+                        data-nombre={s.nombre}
+                        data-categoria={s.categoria}
+                        data-icono={s.icono}
+                        data-descripcion={s.descripcion}
+                        data-especies={s.especies}
+                        data-duracion={s.duracion_min}
+                        data-precio={s.precio}
+                        data-activo={s.activo ? '1' : '0'}
+                      >
+                        Editar
+                      </button>
+                      <form method="post" class="sis-inline">
+                        <input type="hidden" name="accion" value="estado" />
+                        <input type="hidden" name="id" value={s.id} />
+                        <button type="submit" class="sis-btn-sec">
+                          {s.activo ? 'Desactivar' : 'Activar'}
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                )}
+              </tr>
+            ))}
+            {lista.length === 0 && (
+              <tr>
+                <td colspan={puedeEditar ? 8 : 7} class="sis-muted">
+                  No se encontraron servicios con los filtros seleccionados.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+
+  {puedeEditar && (
+    <>
+      <!-- Modal para registrar un nuevo servicio -->
+      <dialog id="modal-nuevo-servicio" class="sis-modal" data-abrir={abrirModalNuevo ? 'true' : 'false'}>
+        <div class="sis-modal-contenido">
+          <div class="sis-modal-head">
+            <h2>Registrar nuevo servicio</h2>
+            <button type="button" id="btn-cerrar-nuevo-servicio" class="sis-btn-sec" aria-label="Cerrar ventana">
+              ✕
+            </button>
+          </div>
+
+          {error && abrirModalNuevo && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+
+          <form method="post" class="sis-form">
+            <input type="hidden" name="accion" value="crear" />
+
+            <div class="sis-form-grid">
+              <label>
+                Código
+                <input name="codigo" required maxlength="20" value={valoresForm.codigo || sugerenciaCodigo} placeholder="Ej. SRV-025" />
+              </label>
+              <label>
+                Ícono
+                <input name="icono" maxlength="4" value={valoresForm.icono || '🩺'} placeholder="🩺" />
+              </label>
+            </div>
+
+            <label>
+              Nombre del servicio
+              <input name="nombre" required maxlength="100" value={valoresForm.nombre ?? ''} placeholder="Ej. Endoscopía digestiva veterinaria" />
+            </label>
+
+            <div class="sis-form-grid">
+              <label>
+                Categoría
+                <select name="categoria" required>
+                  {categoriasServicio.map((cat) => (
+                    <option value={cat} selected={valoresForm.categoria === cat}>{cat}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Especies atendidas
+                <select name="especies" required>
+                  {especiesServicio.map((esp) => (
+                    <option value={esp} selected={valoresForm.especies === esp}>{esp}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div class="sis-form-grid">
+              <label>
+                Duración estimada (minutos)
+                <input type="number" name="duracion_min" required min="5" step="5" value={valoresForm.duracion_min || '30'} />
+              </label>
+              <label>
+                Precio al público (MXN)
+                <input type="number" name="precio" required min="0" step="0.01" value={valoresForm.precio || '350'} />
+              </label>
+            </div>
+
+            <label>
+              Descripción clínica del servicio
+              <textarea name="descripcion" rows="3" required maxlength="300" placeholder="Detalla qué incluye el servicio...">{valoresForm.descripcion ?? ''}</textarea>
+            </label>
+
+            <div class="sis-modal-botones">
+              <button type="submit" class="vet-btn-primary">Guardar servicio</button>
+              <button type="button" id="btn-cancelar-nuevo-servicio" class="sis-btn-sec">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+
+      <!-- Modal para editar un servicio existente -->
+      <dialog id="modal-editar-servicio" class="sis-modal" data-abrir={abrirModalEditar ? 'true' : 'false'}>
+        <div class="sis-modal-contenido">
+          <div class="sis-modal-head">
+            <h2>Editar servicio veterinario</h2>
+            <button type="button" id="btn-cerrar-editar-servicio" class="sis-btn-sec" aria-label="Cerrar ventana">
+              ✕
+            </button>
+          </div>
+
+          {error && abrirModalEditar && <p class="sis-alerta sis-alerta-error" role="alert">{error}</p>}
+
+          <form method="post" class="sis-form">
+            <input type="hidden" name="accion" value="editar" />
+            <input type="hidden" name="id" id="srv-edit-id" value={valoresForm.id ?? ''} />
+
+            <div class="sis-form-grid">
+              <label>
+                Código
+                <input name="codigo" id="srv-edit-codigo" required maxlength="20" value={valoresForm.codigo ?? ''} />
+              </label>
+              <label>
+                Ícono
+                <input name="icono" id="srv-edit-icono" maxlength="4" value={valoresForm.icono ?? '🩺'} />
+              </label>
+            </div>
+
+            <label>
+              Nombre del servicio
+              <input name="nombre" id="srv-edit-nombre" required maxlength="100" value={valoresForm.nombre ?? ''} />
+            </label>
+
+            <div class="sis-form-grid">
+              <label>
+                Categoría
+                <select name="categoria" id="srv-edit-categoria" required>
+                  {categoriasServicio.map((cat) => (
+                    <option value={cat} selected={valoresForm.categoria === cat}>{cat}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Especies atendidas
+                <select name="especies" id="srv-edit-especies" required>
+                  {especiesServicio.map((esp) => (
+                    <option value={esp} selected={valoresForm.especies === esp}>{esp}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div class="sis-form-grid">
+              <label>
+                Duración estimada (minutos)
+                <input type="number" name="duracion_min" id="srv-edit-duracion" required min="5" step="5" value={valoresForm.duracion_min ?? '30'} />
+              </label>
+              <label>
+                Precio al público (MXN)
+                <input type="number" name="precio" id="srv-edit-precio" required min="0" step="0.01" value={valoresForm.precio ?? '0'} />
+              </label>
+            </div>
+
+            <label>
+              Estado
+              <select name="activo" id="srv-edit-activo">
+                <option value="1" selected={valoresForm.activo !== '0'}>Activo</option>
+                <option value="0" selected={valoresForm.activo === '0'}>Inactivo</option>
+              </select>
+            </label>
+
+            <label>
+              Descripción clínica del servicio
+              <textarea name="descripcion" id="srv-edit-descripcion" rows="3" required maxlength="300">{valoresForm.descripcion ?? ''}</textarea>
+            </label>
+
+            <div class="sis-modal-botones">
+              <button type="submit" class="vet-btn-primary">Guardar cambios</button>
+              <button type="button" id="btn-cancelar-editar-servicio" class="sis-btn-sec">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      </dialog>
+    </>
+  )}
+</SistemaLayout>
+
+<script>
+  const modalNuevo = document.getElementById('modal-nuevo-servicio') as HTMLDialogElement | null;
+  const modalEditar = document.getElementById('modal-editar-servicio') as HTMLDialogElement | null;
+
+  document.getElementById('btn-abrir-nuevo-servicio')?.addEventListener('click', () => modalNuevo?.showModal());
+  document.getElementById('btn-cerrar-nuevo-servicio')?.addEventListener('click', () => modalNuevo?.close());
+  document.getElementById('btn-cancelar-nuevo-servicio')?.addEventListener('click', () => modalNuevo?.close());
+
+  document.getElementById('btn-cerrar-editar-servicio')?.addEventListener('click', () => modalEditar?.close());
+  document.getElementById('btn-cancelar-editar-servicio')?.addEventListener('click', () => modalEditar?.close());
+
+  [modalNuevo, modalEditar].forEach((modal) => {
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) modal.close();
+    });
+    if (modal?.dataset.abrir === 'true') {
+      modal.showModal();
+    }
+  });
+
+  const inputId = document.getElementById('srv-edit-id') as HTMLInputElement | null;
+  const inputCodigo = document.getElementById('srv-edit-codigo') as HTMLInputElement | null;
+  const inputIcono = document.getElementById('srv-edit-icono') as HTMLInputElement | null;
+  const inputNombre = document.getElementById('srv-edit-nombre') as HTMLInputElement | null;
+  const selectCategoria = document.getElementById('srv-edit-categoria') as HTMLSelectElement | null;
+  const selectEspecies = document.getElementById('srv-edit-especies') as HTMLSelectElement | null;
+  const inputDuracion = document.getElementById('srv-edit-duracion') as HTMLInputElement | null;
+  const inputPrecio = document.getElementById('srv-edit-precio') as HTMLInputElement | null;
+  const selectActivo = document.getElementById('srv-edit-activo') as HTMLSelectElement | null;
+  const textareaDescripcion = document.getElementById('srv-edit-descripcion') as HTMLTextAreaElement | null;
+
+  document.querySelectorAll<HTMLButtonElement>('.btn-editar-servicio').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      if (!modalEditar || !inputId || !inputCodigo || !inputIcono || !inputNombre || !selectCategoria || !selectEspecies || !inputDuracion || !inputPrecio || !selectActivo || !textareaDescripcion) return;
+      inputId.value = btn.dataset.id ?? '';
+      inputCodigo.value = btn.dataset.codigo ?? '';
+      inputIcono.value = btn.dataset.icono ?? '🩺';
+      inputNombre.value = btn.dataset.nombre ?? '';
+      selectCategoria.value = btn.dataset.categoria ?? '';
+      selectEspecies.value = btn.dataset.especies ?? 'Perros y gatos';
+      inputDuracion.value = btn.dataset.duracion ?? '30';
+      inputPrecio.value = btn.dataset.precio ?? '0';
+      selectActivo.value = btn.dataset.activo ?? '1';
+      textareaDescripcion.value = btn.dataset.descripcion ?? '';
+      modalEditar.showModal();
+    });
+  });
+</script>

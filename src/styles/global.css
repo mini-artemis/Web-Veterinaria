@@ -2197,3 +2197,126 @@ img {
   padding-top: 0.75rem;
   border-top: 1px solid #e5e7eb;
 }
+
+/* Catálogo de servicios en el sistema (/sistema/servicios) */
+.sis-servicios-resumen {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.sis-servicios-resumen .sis-card {
+  margin-bottom: 0;
+}
+
+.sis-resumen-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  border-left: 0.25rem solid #0f766e;
+}
+
+.sis-resumen-etiqueta {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #4b5563;
+}
+
+.sis-resumen-numero {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #0f766e;
+  line-height: 1.1;
+}
+
+.sis-servicio-celda {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  max-width: 32rem;
+}
+
+.sis-servicio-icono {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex-shrink: 0;
+  border-radius: 0.625rem;
+  background-color: rgba(15, 118, 110, 0.1);
+  font-size: 1.25rem;
+}
+
+.sis-servicio-precio {
+  color: #0f766e;
+  white-space: nowrap;
+}
+
+.sis-badge-sin-margen {
+  margin-left: 0;
+}
+
+.sis-servicios-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 1.25rem;
+}
+
+.sis-servicio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 0;
+  border-top: 0.25rem solid #0f766e;
+}
+
+.sis-servicio-card h3 {
+  margin: 0;
+  font-size: 1.125rem;
+  color: #1f2937;
+}
+
+.sis-servicio-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  flex-grow: 1;
+}
+
+.sis-servicio-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sis-servicio-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sis-servicio-codigo {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #374151;
+  background: #f3f4f6;
+  padding: 0.15em 0.5em;
+  border-radius: 0.375rem;
+}
+
+.sis-servicio-detalles {
+  padding-top: 0.75rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875rem;
+}
+
+.sis-servicio-card-acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.5rem;
+}

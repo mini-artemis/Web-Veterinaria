@@ -21,6 +21,7 @@ const pestanas = esUsuario
       { href: '/sistema', texto: 'Mi perfil', visible: true },
       { href: '/sistema/inventario', texto: 'Inventario', visible: puede(usuario, 'inventario.ver') },
       { href: '/sistema/proveedores', texto: 'Proveedores', visible: puede(usuario, 'inventario.ver') },
+      { href: '/sistema/servicios', texto: 'Servicios', visible: puede(usuario, 'inventario.ver') || usuario.rol === 'Administrador' },
       { href: '/sistema/usuarios', texto: 'Usuarios', visible: puede(usuario, 'usuarios.administrar') },
       { href: '/sistema/citas', texto: 'Citas', visible: puede(usuario, 'citas.administrar') },
     ].filter((p) => p.visible);

@@ -1,16 +1,10 @@
 import { texto, textoONulo } from './forms';
 import { LOGO_HEIGHT, LOGO_JPEG_BASE64, LOGO_WIDTH } from './logo-pdf';
+import { serviciosIniciales } from './servicios';
 
 export const especiesCita = ['Perro', 'Gato', 'Otro'] as const;
 
-export const serviciosCita = [
-  'Consulta general',
-  'Vacunación y desparasitación',
-  'Cirugía',
-  'Laboratorio',
-  'Estética y baño',
-  'Hospitalización',
-] as const;
+export const serviciosCita = serviciosIniciales.map((s) => s.nombre);
 
 /** Bloques de 1 hora de 9:00 a 19:00 (horario de consulta). */
 export const horariosCita = [
