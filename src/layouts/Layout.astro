@@ -34,7 +34,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
         <div class="vet-nav-menu">
           <div class="vet-links">
             <a href="/" class:list={{ active: path === '/' }}>Inicio</a>
-            <a href="#">Servicios</a>
+            <a href="/servicios" class:list={{ active: path === '/servicios' }}>Servicios</a>
             <a href="#">Especialistas</a>
             <a href="/nosotros" class:list={{ active: path === '/nosotros' }}>Nosotros</a>
             <a href="/sistema" class:list={{ active: path.startsWith('/sistema') || path === '/login' }}>Mi perfil</a>

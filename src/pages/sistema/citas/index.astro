@@ -14,7 +14,8 @@ import {
   type CitaDetallada,
 } from '../../../lib/citas';
 import { consulta, esDuplicado } from '../../../lib/db';
-import { entero, texto } from '../../../lib/forms';
+import { entero, pesos, texto } from '../../../lib/forms';
+import { listarServicios } from '../../../lib/servicios';
 
 export const prerender = false;
 
@@ -99,8 +100,8 @@ if (Astro.request.method === 'POST') {
   }
 }
 
-// Consultamos las citas (todas para el administrador, o solo las del cliente actual)
-const [citas, ocupadas, clientes] = await Promise.all([
+// Consultamos las citas (todas para el administrador, o solo las del cliente actual) y el catálogo de servicios activos
+const [citas, ocupadas, clientes, listaServiciosActivos] = await Promise.all([
   consulta<CitaDetallada>(
     `SELECT c.id, c.usuario_id, u.nombre AS cliente_nombre, u.correo AS cliente_correo,
             c.mascota, c.especie, c.servicio, c.notas, c.fecha, c.hora, c.estado, c.creado_en
@@ -123,6 +124,7 @@ const [citas, ocupadas, clientes] = await Promise.all([
           ORDER BY (r.nombre = 'Usuario') DESC, u.nombre`,
       )
     : Promise.resolve([]),
+  listarServicios(),
 ]);
 
 const mapaOcupadas: Record<string, string[]> = {};
@@ -334,9 +336,9 @@ for (const o of ocupadas) {
         <label>
           Servicio o motivo
           <select name="servicio" required>
-            {serviciosCita.map((srv) => (
-              <option value={srv} selected={valores.servicio === srv}>
-                {srv}
+            {(listaServiciosActivos.length > 0 ? listaServiciosActivos : serviciosCita.map((nombre) => ({ nombre, icono: '🩺', precio: 0 }))).map((srv) => (
+              <option value={srv.nombre} selected={valores.servicio === srv.nombre}>
+                {srv.icono} {srv.nombre}{srv.precio > 0 ? ` — ${pesos(srv.precio)}` : ''}
               </option>
             ))}
           </select>

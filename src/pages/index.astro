@@ -4,16 +4,11 @@ import Layout from '../layouts/Layout.astro';
 import logoVeterinaria from '../assets/LogoVeterinaria.jpeg';
 import Veterinaria1 from '../assets/Veterinaria1.jpeg';
 import Veterinaria2 from '../assets/Veterinaria2.jpeg';
+import { formatearDuracion, serviciosIniciales } from '../lib/catalogo-servicios';
+import { pesos } from '../lib/forms';
 
-// Servicios principales que se muestran en la página de inicio
-const servicios = [
-  { icono: '🩺', titulo: 'Consulta general', texto: 'Revisión completa, diagnóstico y tratamiento para perros, gatos y otras mascotas pequeñas.' },
-  { icono: '💉', titulo: 'Vacunación y desparasitación', texto: 'Esquemas completos para cachorros y adultos, con recordatorios de tus próximas dosis.' },
-  { icono: '🏥', titulo: 'Cirugía', texto: 'Esterilizaciones y cirugías generales en quirófano equipado, con monitoreo constante.' },
-  { icono: '🔬', titulo: 'Laboratorio', texto: 'Análisis de sangre, orina y coprológicos con resultados el mismo día.' },
-  { icono: '🛁', titulo: 'Estética y baño', texto: 'Baño, corte de pelo, corte de uñas y limpieza de oídos con productos especiales.' },
-  { icono: '🛏️', titulo: 'Hospitalización', texto: 'Cuidado las 24 horas para mascotas que necesitan observación o recuperación.' },
-];
+// Catálogo completo de servicios veterinarios que se muestran en la página de inicio
+const servicios = serviciosIniciales;
 
 // Pasos para agendar una cita
 const pasosCita = [
@@ -105,18 +100,25 @@ const heroImages = [
   </section>
 
   <!-- SERVICIOS PRINCIPALES -->
-  <section class="vet-section vet-section-alt">
+  <section id="servicios" class="vet-section vet-section-alt">
     <div class="vet-section-inner">
       <div class="vet-section-head">
         <h2>Nuestros servicios</h2>
-        <p>Todo lo que tu mascota necesita para estar sana y feliz, en un solo lugar.</p>
+        <p>Contamos con {servicios.length} servicios médicos, quirúrgicos, diagnósticos y estéticos para cuidar a tu mascota.</p>
       </div>
       <div class="vet-grid">
         {servicios.map((servicio) => (
           <div class="vet-service">
-            <span class="vet-service-icon" aria-hidden="true">{servicio.icono}</span>
-            <h3>{servicio.titulo}</h3>
-            <p>{servicio.texto}</p>
+            <div class="vet-service-top">
+              <span class="vet-service-icon" aria-hidden="true">{servicio.icono}</span>
+              <span class="sis-badge sis-badge-ok sis-badge-sin-margen">{servicio.categoria}</span>
+            </div>
+            <h3>{servicio.nombre}</h3>
+            <p>{servicio.descripcion}</p>
+            <div class="vet-service-meta">
+              <span>⏱️ {formatearDuracion(servicio.duracion_min)}</span>
+              <strong>{pesos(servicio.precio)}</strong>
+            </div>
           </div>
         ))}
       </div>

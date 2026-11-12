@@ -558,6 +558,8 @@ img {
 
 /* Tarjetas de servicios */
 .vet-service {
+  display: flex;
+  flex-direction: column;
   padding: 1.5rem;
   border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
@@ -570,6 +572,14 @@ img {
   box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.08);
 }
 
+.vet-service-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
 .vet-service-icon {
   display: grid;
   place-items: center;
@@ -579,6 +589,50 @@ img {
   font-size: 1.5rem;
   border-radius: 0.75rem;
   background-color: rgba(13, 148, 136, 0.1);
+}
+
+.vet-service-top .vet-service-icon {
+  margin-bottom: 0;
+}
+
+.vet-service-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.875rem;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.8125rem;
+  color: #4b5563;
+}
+
+.vet-service-meta strong {
+  color: #0f766e;
+  font-size: 0.9375rem;
+}
+
+.vet-cat-btn {
+  font: inherit;
+  padding: 0.5em 1em;
+  border-radius: 999px;
+  color: #374151;
+  font-weight: 600;
+  background: white;
+  border: 1px solid #d1d5db;
+  cursor: pointer;
+}
+
+.vet-cat-btn:hover {
+  border-color: #0f766e;
+  color: #0f766e;
+}
+
+.vet-cat-btn.active {
+  background: #0f766e;
+  border-color: #0f766e;
+  color: white;
 }
 
 .vet-service h3,

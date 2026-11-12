@@ -1,0 +1,77 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { categoriasServicio, formatearDuracion, serviciosIniciales } from '../lib/catalogo-servicios';
+import { pesos } from '../lib/forms';
+
+const servicios = serviciosIniciales;
+---
+
+<Layout
+  title="Servicios Veterinarios | Puppy and Kitty"
+  description="Conoce los 24 servicios veterinarios que ofrece la clínica Puppy and Kitty: consultas, vacunación, cirugía, laboratorio, imagenología, estética y urgencias 24/7."
+>
+  <header class="vet-page-banner">
+    <h1>Nuestros Servicios Veterinarios</h1>
+    <p>Contamos con {servicios.length} servicios médicos, quirúrgicos, diagnósticos y estéticos para el bienestar integral de tu mascota.</p>
+  </header>
+
+  <section class="vet-section">
+    <div class="vet-section-inner">
+      <div class="sis-acciones">
+        <div class="sis-tabs" id="filtros-categoria" role="tablist" aria-label="Filtrar por categoría">
+          <button type="button" class="vet-cat-btn active" data-categoria="">
+            Todos ({servicios.length})
+          </button>
+          {categoriasServicio.map((cat) => {
+            const totalCat = servicios.filter((s) => s.categoria === cat).length;
+            return (
+              <button type="button" class="vet-cat-btn" data-categoria={cat}>
+                {cat} ({totalCat})
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div class="vet-grid" id="grid-servicios-publicos">
+        {servicios.map((servicio) => (
+          <article class="vet-service" data-categoria={servicio.categoria}>
+            <div class="vet-service-top">
+              <span class="vet-service-icon" aria-hidden="true">{servicio.icono}</span>
+              <span class="sis-badge sis-badge-ok sis-badge-sin-margen">{servicio.categoria}</span>
+            </div>
+            <h3>{servicio.nombre}</h3>
+            <p>{servicio.descripcion}</p>
+            <div class="vet-service-meta">
+              <span>🐾 {servicio.especies}</span>
+              <span>⏱️ {formatearDuracion(servicio.duracion_min)}</span>
+              <strong>{pesos(servicio.precio)}</strong>
+            </div>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="vet-cta">
+    <h2>¿Deseas agendar alguno de nuestros servicios?</h2>
+    <p>Reserva tu cita en línea y recibe tu comprobante en formato PDF al instante.</p>
+    <a href="/sistema/citas" class="vet-btn-light sis-btn-link">Agendar Cita</a>
+  </section>
+</Layout>
+
+<script>
+  const botones = document.querySelectorAll<HTMLButtonElement>('.vet-cat-btn');
+  const tarjetas = document.querySelectorAll<HTMLElement>('#grid-servicios-publicos .vet-service');
+
+  botones.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      botones.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+      const cat = btn.dataset.categoria ?? '';
+      tarjetas.forEach((card) => {
+        card.hidden = Boolean(cat && card.dataset.categoria !== cat);
+      });
+    });
+  });
+</script>
